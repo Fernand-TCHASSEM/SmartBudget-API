@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SmartBudget.API/SmartBudget.API.csproj" />
+  <Project Path="SmartBudget.Application/SmartBudget.Application.csproj" />
+  <Project Path="SmartBudget.Domain/SmartBudget.Domain.csproj" />
+  <Project Path="SmartBudget.Infrastructure/SmartBudget.Infrastructure.csproj" />
+  <Project Path="SmartBudget.Tests/SmartBudget.Tests.csproj" />
+</Solution>
