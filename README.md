@@ -18,7 +18,7 @@
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
-- [Environment Variables](#environment-variables)
+- [Configuration](#configuration)
 - [Project Structure](#project-structure)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
@@ -135,13 +135,13 @@ git clone https://github.com/fernandtchassem/smartbudget.git
 cd smartbudget
 ```
 
-### 2. Configure environment variables
+### 2. Configure the application settings
 
 ```bash
-cp .env.example .env
+cp SmartBudget.API/appsettings.Development.json.example SmartBudget.API/appsettings.Development.json
 ```
 
-Edit `.env` with your values (see [Environment Variables](#environment-variables)).
+Edit `appsettings.Development.json` with your local values (see [Configuration](#configuration)).
 
 ### 3. Start the containers
 
@@ -179,37 +179,52 @@ The Scalar documentation is available at `http://localhost:8080/scalar`
 
 ---
 
-## Environment Variables
+## Configuration
 
-Create a `.env` file at the project root:
+ASP.NET Core uses a layered configuration system — no `.env` file required.
 
-```env
-# Database
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=smart_budget
-MYSQL_USER=smartbudget
-MYSQL_PASSWORD=SmartBudget123!
+| File | Purpose | Committed to Git |
+|---|---|---|
+| `appsettings.json` | Default values, no secrets | Yes |
+| `appsettings.Development.json` | Local development values | No — in `.gitignore` |
+| `appsettings.Production.json` | Production values | No — in `.gitignore` |
+| `appsettings.Development.json.example` | Template without secrets | Yes |
 
-# JWT
-JWT_SECRET_KEY=your-super-secret-key-minimum-32-characters
-JWT_ISSUER=SmartBudget
-JWT_AUDIENCE=SmartBudgetUsers
-JWT_ACCESS_TOKEN_EXPIRY_MINUTES=15
-JWT_REFRESH_TOKEN_EXPIRY_DAYS=7
+**`appsettings.Development.json`** (created from the example above):
 
-# ASP.NET Core
-ASPNETCORE_ENVIRONMENT=Development
-ASPNETCORE_URLS=http://+:8080
-
-# Azure Blob Storage (optional for local development)
-AZURE_BLOB_CONNECTION_STRING=
-AZURE_BLOB_CONTAINER_NAME=smartbudget-files
-
-# Serilog
-LOG_FILE_PATH=/app/logs/smartbudget-.log
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=smart_budget_mysql;Port=3306;Database=smart_budget;User Id=smartbudget;Password=SmartBudget123!;"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-super-secret-key-minimum-32-characters",
+    "Issuer": "SmartBudget",
+    "Audience": "SmartBudgetUsers",
+    "AccessTokenExpiryMinutes": 15,
+    "RefreshTokenExpiryDays": 7
+  },
+  "AzureBlob": {
+    "ConnectionString": "",
+    "ContainerName": "smartbudget-files"
+  },
+  "Serilog": {
+    "LogFilePath": "/app/logs/smartbudget-.log"
+  }
+}
 ```
 
-> Never commit the `.env` file. It is listed in `.gitignore`.
+**Docker Compose environment variables** use the `__` (double underscore) convention to map to nested JSON keys:
+
+```yaml
+environment:
+  - ASPNETCORE_ENVIRONMENT=Development
+  - ASPNETCORE_URLS=http://+:8080
+  - ConnectionStrings__DefaultConnection=Server=smart_budget_mysql;Port=3306;...
+  - JwtSettings__SecretKey=your-secret-key
+```
+
+> Never commit `appsettings.Development.json` or `appsettings.Production.json`. Both are listed in `.gitignore`.
 
 ---
 
@@ -272,6 +287,8 @@ SmartBudget.API/
 │   └── BudgetsController.cs
 ├── Middlewares/
 │   └── ExceptionMiddleware.cs
+├── appsettings.json
+├── appsettings.Development.json.example
 └── Program.cs
 ```
 
