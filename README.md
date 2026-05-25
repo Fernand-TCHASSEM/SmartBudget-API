@@ -20,6 +20,7 @@
 - [Installation & Setup](#installation--setup)
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
+- [JWT Authentication — Implementation Guide](#jwt-authentication--implementation-guide)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
 - [Roadmap](#roadmap)
@@ -75,7 +76,7 @@ This project is built as a technical portfolio piece demonstrating proficiency i
 |---|---|
 | Backend API | ASP.NET Core 10 (Web API) |
 | ORM | Entity Framework Core 9 + Pomelo MySQL |
-| Authentication | ASP.NET Identity + JWT (access + refresh token) |
+| Authentication | Custom JWT — BCrypt.Net + JwtBearer (access + refresh token) |
 | Validation | FluentValidation 12 + AutoValidation |
 | API Documentation | Scalar (OpenAPI) |
 | Logging | Serilog (console + file sink) |
@@ -164,7 +165,14 @@ Ctrl+Shift+P → Dev Containers: Reopen in Container
 Inside the container terminal:
 
 ```bash
+# Move into the startup project (provides DI + connection string)
 cd SmartBudget.API
+
+# Generate the migration — reads the DbContext from Infrastructure and creates
+# the migration files (Up/Down SQL + model snapshot) in SmartBudget.Infrastructure/Migrations/
+dotnet ef migrations add InitialCreate --project ../SmartBudget.Infrastructure
+
+# Apply pending migrations to the MySQL database
 dotnet ef database update --project ../SmartBudget.Infrastructure
 ```
 
@@ -234,19 +242,29 @@ environment:
 SmartBudget.Domain/
 ├── Entities/
 │   ├── User.cs
+│   ├── RefreshToken.cs
 │   ├── Transaction.cs
 │   ├── Category.cs
 │   ├── CategoryRule.cs
 │   ├── BankAccount.cs
 │   ├── ImportBatch.cs
-│   ├── Budget.cs
-│   └── RefreshToken.cs
+│   └── Budget.cs
 ├── Enums/
+│   ├── Currency.cs
 │   ├── TransactionType.cs
 │   └── ImportStatus.cs
-└── Interfaces/
-    ├── ISoftDeletable.cs
-    └── IRepository.cs
+├── Interfaces/
+│   ├── ISoftDeletable.cs
+│   ├── Repositories/
+│   │   ├── IRepository.cs
+│   │   ├── IUserRepository.cs
+│   │   ├── IRefreshTokenRepository.cs
+│   │   ├── ITransactionRepository.cs
+│   │   ├── ICategoryRepository.cs
+│   │   └── IBudgetRepository.cs
+│   └── Services/
+│       ├── ITokenService.cs
+│       └── IPasswordHasher.cs
 
 SmartBudget.Application/
 ├── Services/
@@ -258,24 +276,38 @@ SmartBudget.Application/
 │   └── BudgetService.cs
 ├── DTOs/
 │   ├── Auth/
+│   │   ├── RegisterRequest.cs
+│   │   └── RegisterResponse.cs
 │   ├── Transactions/
 │   ├── Dashboard/
 │   └── Import/
-└── Validators/
-    ├── RegisterValidator.cs
-    └── ImportValidator.cs
+├── Validators/
+│   ├── Auth/
+│   │   └── RegisterDtoValidator.cs
+│   └── ImportValidator.cs
+└── DependencyInjection.cs
 
 SmartBudget.Infrastructure/
 ├── Persistence/
+│   ├── Configurations/
+│   │   ├── UserConfiguration.cs
+│   │   └── RefreshTokenConfiguration.cs
 │   ├── SmartBudgetDbContext.cs
+│   ├── SoftDeleteInterceptor.cs
 │   └── Migrations/
 ├── Repositories/
+│   ├── UserRepository.cs
+│   ├── RefreshTokenRepository.cs
 │   ├── TransactionRepository.cs
 │   ├── CategoryRepository.cs
 │   └── BudgetRepository.cs
-└── Parsers/
-    ├── CsvParser.cs
-    └── PdfParser.cs
+├── Services/
+│   ├── TokenService.cs
+│   └── PasswordHasher.cs
+├── Parsers/
+│   ├── CsvParser.cs
+│   └── PdfParser.cs
+└── DependencyInjection.cs
 
 SmartBudget.API/
 ├── Controllers/
@@ -285,11 +317,172 @@ SmartBudget.API/
 │   ├── DashboardController.cs
 │   ├── CategoriesController.cs
 │   └── BudgetsController.cs
+├── Results/
+│   └── UnprocessableEntityResultFactory.cs
 ├── Middlewares/
 │   └── ExceptionMiddleware.cs
+├── DependencyInjection.cs
 ├── appsettings.json
 ├── appsettings.Development.json.example
 └── Program.cs
+```
+
+---
+
+## JWT Authentication — Implementation Guide
+
+This project uses a **custom JWT approach** — no ASP.NET Identity. The domain `User` entity stays clean, password hashing is handled by `BCrypt.Net`, and token management is fully owned by the application layer.
+
+> Reference: [Building a Secure API with ASP.NET Core, JWT and Refresh Tokens](https://medium.com/@MatinGhanbari/building-a-secure-api-with-asp-net-core-jwt-and-refresh-tokens-03dac37b4055)
+
+### 1. Packages to install
+
+```bash
+# SmartBudget.API
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+
+# SmartBudget.Infrastructure
+dotnet add package BCrypt.Net-Next
+```
+
+### 2. Domain layer
+
+**`RefreshToken` entity** (`SmartBudget.Domain/Entities/RefreshToken.cs`):
+```csharp
+public class RefreshToken
+{
+    public string Id { get; init; } = Guid.NewGuid().ToString();
+    public required string Token { get; set; }       // cryptographically random string
+    public required string UserId { get; set; }
+    public User User { get; set; } = null!;
+    public required DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsRevoked { get; set; } = false;
+}
+```
+
+Add the navigation property on `User`:
+```csharp
+public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+```
+
+**`ITokenService` interface** (`SmartBudget.Domain/Interfaces/Services/ITokenService.cs`):
+```csharp
+public interface ITokenService
+{
+    string GenerateAccessToken(User user);
+    string GenerateRefreshToken();
+    ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
+}
+```
+
+### 3. Application layer
+
+**DTOs** (`SmartBudget.Application/DTOs/Auth/`):
+```
+RegisterRequest.cs   — Email, Password, FirstName, LastName, Currency
+RegisterResponse.cs  — AccessToken, RefreshToken, ExpiresIn
+LoginRequest.cs      — Email, Password
+RefreshRequest.cs    — AccessToken (expired), RefreshToken
+```
+
+**`AuthService`** (`SmartBudget.Application/Services/AuthService.cs`) — orchestrates:
+- `Register`: hash password with `IPasswordHasher`, persist user, return tokens
+- `Login`: find user by email, verify password, generate + persist refresh token, return `RegisterResponse`
+- `Refresh`: validate expired access token via `GetPrincipalFromExpiredToken`, check refresh token in DB (not revoked, not expired, matches user), revoke old token, issue new pair
+
+### 4. Infrastructure layer
+
+**`TokenService`** (`SmartBudget.Infrastructure/Services/TokenService.cs`):
+```csharp
+// GenerateAccessToken: build Claims (NameIdentifier, Email, Role),
+//   sign with HMACSHA256 key from JwtSettings:SecretKey, 15-min expiry
+// GenerateRefreshToken: Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
+// GetPrincipalFromExpiredToken: ValidateToken with ValidateLifetime = false
+```
+
+**`RefreshTokenConfiguration`** (`SmartBudget.Infrastructure/Persistence/Configurations/RefreshTokenConfiguration.cs`):
+```csharp
+builder.ToTable("refresh_tokens");
+builder.HasKey(r => r.Id);
+builder.Property(r => r.Token).IsRequired().HasMaxLength(128);
+builder.Property(r => r.ExpiresAt).IsRequired();
+builder.HasOne(r => r.User)
+       .WithMany(u => u.RefreshTokens)
+       .HasForeignKey(r => r.UserId)
+       .OnDelete(DeleteBehavior.Cascade);
+```
+
+Add `DbSet<RefreshToken> RefreshTokens` to `SmartBudgetDbContext`.
+
+### 5. API layer
+
+**`appsettings.json`** — add the `JwtSettings` block:
+```json
+"JwtSettings": {
+  "SecretKey": "your-super-secret-key-minimum-32-characters",
+  "Issuer": "SmartBudget",
+  "Audience": "SmartBudgetUsers",
+  "AccessTokenExpiryMinutes": 15,
+  "RefreshTokenExpiryDays": 7
+}
+```
+
+**`DependencyInjection.cs`** (`SmartBudget.API/DependencyInjection.cs`) — JWT auth is registered in `AddPresentation(IConfiguration config)`:
+```csharp
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = config["JwtSettings:Issuer"],
+            ValidAudience            = config["JwtSettings:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(
+                                           Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]!))
+        };
+    });
+```
+
+**`Program.cs`** — lean bootstrap, no inline configuration:
+```csharp
+builder.Services.AddPresentation(builder.Configuration);
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+**`AuthController`** (`SmartBudget.API/Controllers/AuthController.cs`):
+
+| Method | Route | Body | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | `RegisterRequest` | Create account, return token pair |
+| `POST` | `/api/auth/login` | `LoginRequest` | Authenticate, return token pair |
+| `POST` | `/api/auth/refresh` | `RefreshRequest` | Rotate token pair |
+| `POST` | `/api/auth/revoke` | — | `[Authorize]` — revoke current refresh token |
+
+### 6. Token flow
+
+```
+POST /api/auth/login
+  → verify password (BCrypt)
+  → generate access token (JWT, 15 min)
+  → generate refresh token (random, 7 days), persist to DB
+  → return { accessToken, refreshToken }
+
+[client stores both; uses accessToken on every request]
+
+POST /api/auth/refresh  (when accessToken expires)
+  → validate expired accessToken signature (lifetime check disabled)
+  → look up refreshToken in DB: must be active + match userId
+  → revoke old refreshToken (set revokedAt)
+  → generate + persist new token pair
+  → return new { accessToken, refreshToken }
 ```
 
 ---
@@ -344,8 +537,10 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 
 - [x] Database schema (v2 with soft delete)
 - [x] Clean Architecture setup + Docker Dev Container
-- [ ] Domain entities + EF Core migrations
-- [ ] JWT authentication (register / login / refresh)
+- [x] Core domain entities (User, RefreshToken) + EF Core configurations
+- [x] JWT authentication — register endpoint (access + refresh token)
+- [ ] JWT authentication — login / refresh / revoke endpoints
+- [ ] Remaining domain entities + EF Core migrations
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine
 - [ ] PDF import (PdfPig)

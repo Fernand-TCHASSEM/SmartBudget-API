@@ -1,41 +1,69 @@
-var builder = WebApplication.CreateBuilder(args);
+using Scalar.AspNetCore;
+using Serilog;
+using SmartBudget.API;
+using SmartBudget.Application;
+using SmartBudget.Infrastructure;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 
-var app = builder.Build();
+// Captures startup failures before the DI container is ready
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+try
 {
-    app.MapOpenApi();
+    var builder = WebApplication.CreateBuilder(args);
+
+    var configuration = builder.Configuration;
+
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss}] {Environment}.{Level:u}: {Message:lj}{NewLine}{Exception}")
+        .WriteTo.File(
+            path: context.Configuration["LogFilePath"] ?? "/app/logs/smartbudget-.log",
+            rollingInterval: RollingInterval.Day,
+            outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss}] {Environment}.{Level:u}: {Message:lj}{NewLine}{Exception}")
+        );
+
+    builder.Services.AddOpenApi();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddPresentation(configuration);
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(configuration);
+
+    var app = builder.Build();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseExceptionHandler();
+    app.UseSerilogRequestLogging();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
+
+    app.MapScalarApiReference();
+    app.MapControllers();
+
+    if (app.Environment.IsProduction())
+    {
+        app.UseHttpsRedirection();
+    }
+
+    app.Run();
+}
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    Log.Fatal(ex, "Application failed to start");
+    return 1;
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+return 0;

@@ -25,7 +25,7 @@ USER ubuntu
 ENV NUGET_PACKAGES=${APP_HOME}/.nuget/packages
 
 # dotnet tools
-RUN dotnet tool install --global dotnet-ef
+RUN dotnet tool install --global dotnet-ef --version 10.0.8
 ENV PATH="${PATH}:/home/ubuntu/.dotnet/tools"
 
 WORKDIR ${APP_HOME}
