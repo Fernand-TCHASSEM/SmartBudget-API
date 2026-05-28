@@ -15,7 +15,7 @@ public class RegisterDtoValidator : AbstractValidator<RegisterRequest>
             .MaximumLength(255)
             .MustAsync(async (email, _) =>
             {
-                var exists = await userRepository.ExistsByEmailAsync(email);
+                var exists = await userRepository.ExistsByAsync(u => u.Email == email, _);
                 return !exists;
             })
             .WithMessage("Email is already in use.");

@@ -277,13 +277,19 @@ SmartBudget.Application/
 ├── DTOs/
 │   ├── Auth/
 │   │   ├── RegisterRequest.cs
-│   │   └── RegisterResponse.cs
+│   │   ├── AuthResponse.cs
+│   │   ├── LoginRequest.cs
+│   │   └── RefreshRequest.cs
+│   ├── User/
+│   │   └── UserResponse.cs
 │   ├── Transactions/
 │   ├── Dashboard/
 │   └── Import/
 ├── Validators/
 │   ├── Auth/
-│   │   └── RegisterDtoValidator.cs
+│   │   ├── RegisterDtoValidator.cs
+│   │   ├── LoginDtoValidator.cs
+│   │   └── RefreshTokenDtoValidator.cs
 │   └── ImportValidator.cs
 └── DependencyInjection.cs
 
@@ -296,6 +302,7 @@ SmartBudget.Infrastructure/
 │   ├── SoftDeleteInterceptor.cs
 │   └── Migrations/
 ├── Repositories/
+│   ├── Repository.cs
 │   ├── UserRepository.cs
 │   ├── RefreshTokenRepository.cs
 │   ├── TransactionRepository.cs
@@ -381,15 +388,20 @@ public interface ITokenService
 **DTOs** (`SmartBudget.Application/DTOs/Auth/`):
 ```
 RegisterRequest.cs   — Email, Password, FirstName, LastName, Currency
-RegisterResponse.cs  — AccessToken, RefreshToken, ExpiresIn
+AuthResponse.cs      — AccessToken, RefreshToken, ExpiresIn, TokenType, User
 LoginRequest.cs      — Email, Password
-RefreshRequest.cs    — AccessToken (expired), RefreshToken
+RefreshRequest.cs    — Token (expired access token), RefreshToken
+```
+
+**User DTO** (`SmartBudget.Application/DTOs/User/`):
+```
+UserResponse.cs      — Id, Email, FirstName, LastName, Currency, MonthStartDay, CreatedAt
 ```
 
 **`AuthService`** (`SmartBudget.Application/Services/AuthService.cs`) — orchestrates:
-- `Register`: hash password with `IPasswordHasher`, persist user, return tokens
-- `Login`: find user by email, verify password, generate + persist refresh token, return `RegisterResponse`
-- `Refresh`: validate expired access token via `GetPrincipalFromExpiredToken`, check refresh token in DB (not revoked, not expired, matches user), revoke old token, issue new pair
+- `Register`: hash password with `IPasswordHasher`, persist user, generate token pair, return `AuthResponse`
+- `Login`: find user by email, verify BCrypt hash, generate + persist refresh token, return `AuthResponse`
+- `Refresh`: validate expired access token via `GetPrincipalFromExpiredToken`, check refresh token in DB (not revoked, not expired, matches user), revoke old token, issue new pair, return `AuthResponse`
 
 ### 4. Infrastructure layer
 
@@ -398,7 +410,11 @@ RefreshRequest.cs    — AccessToken (expired), RefreshToken
 // GenerateAccessToken: build Claims (NameIdentifier, Email, Role),
 //   sign with HMACSHA256 key from JwtSettings:SecretKey, 15-min expiry
 // GenerateRefreshToken: Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
-// GetPrincipalFromExpiredToken: ValidateToken with ValidateLifetime = false
+// GetPrincipalFromExpiredToken: ValidateToken with ValidateLifetime = false,
+//   ValidIssuer = config["JwtSettings:Issuer"],
+//   ValidAudience = config["JwtSettings:Audience"]
+//   — ValidIssuer and ValidAudience MUST be set even with ValidateLifetime = false;
+//     omitting them causes ValidateToken to throw, returning null principal
 ```
 
 **`RefreshTokenConfiguration`** (`SmartBudget.Infrastructure/Persistence/Configurations/RefreshTokenConfiguration.cs`):
@@ -459,30 +475,38 @@ app.UseAuthorization();
 
 **`AuthController`** (`SmartBudget.API/Controllers/AuthController.cs`):
 
-| Method | Route | Body | Description |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | `RegisterRequest` | Create account, return token pair |
-| `POST` | `/api/auth/login` | `LoginRequest` | Authenticate, return token pair |
-| `POST` | `/api/auth/refresh` | `RefreshRequest` | Rotate token pair |
-| `POST` | `/api/auth/revoke` | — | `[Authorize]` — revoke current refresh token |
+| Method | Route | Auth | Body | Description |
+|---|---|---|---|---|
+| `POST` | `/api/auth/register` | — | `RegisterRequest` | Create account, return token pair |
+| `POST` | `/api/auth/login` | — | `LoginRequest` | Authenticate, return token pair |
+| `POST` | `/api/auth/refresh` | — | `RefreshRequest` | Rotate token pair |
+| `POST` | `/api/auth/revoke` | Bearer | `{ refreshToken }` | Revoke a specific refresh token (logout) |
 
 ### 6. Token flow
 
 ```
 POST /api/auth/login
-  → verify password (BCrypt)
-  → generate access token (JWT, 15 min)
-  → generate refresh token (random, 7 days), persist to DB
-  → return { accessToken, refreshToken }
+  → validate credentials via FluentValidation (422 on failure)
+  → verify password with BCrypt (401 if mismatch)
+  → generate access token (JWT, 15 min, claims: userId + email)
+  → generate refresh token (32 random bytes → base64, 7 days), persist to DB
+  → return { accessToken, refreshToken, expiresIn, tokenType, user }
 
 [client stores both; uses accessToken on every request]
 
 POST /api/auth/refresh  (when accessToken expires)
   → validate expired accessToken signature (lifetime check disabled)
-  → look up refreshToken in DB: must be active + match userId
-  → revoke old refreshToken (set revokedAt)
+  → extract userId from NameIdentifier claim
+  → look up user in DB: refresh token must match, not revoked, not expired
+  → revoke old refresh token (set IsRevoked = true)
   → generate + persist new token pair
-  → return new { accessToken, refreshToken }
+  → return new { accessToken, refreshToken, expiresIn, tokenType, user }
+
+POST /api/auth/revoke  [Authorize]
+  → extract userId from JWT (Bearer token required)
+  → look up refresh token in DB, verify it belongs to the current user
+  → set IsRevoked = true
+  → return 204 No Content
 ```
 
 ---
@@ -502,6 +526,7 @@ http://localhost:8080/scalar
 | `POST` | `/api/auth/register` | User registration |
 | `POST` | `/api/auth/login` | Login and get JWT |
 | `POST` | `/api/auth/refresh` | Refresh access token |
+| `POST` | `/api/auth/revoke` | Revoke refresh token (logout) |
 | `GET` | `/api/transactions` | Paginated list with filters |
 | `PATCH` | `/api/transactions/{id}/category` | Update transaction category |
 | `POST` | `/api/imports/csv` | Import CSV bank statement |
@@ -539,7 +564,9 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] Clean Architecture setup + Docker Dev Container
 - [x] Core domain entities (User, RefreshToken) + EF Core configurations
 - [x] JWT authentication — register endpoint (access + refresh token)
-- [ ] JWT authentication — login / refresh / revoke endpoints
+- [x] JWT authentication — login endpoint
+- [x] JWT authentication — refresh endpoint (token rotation)
+- [ ] JWT authentication — revoke endpoint
 - [ ] Remaining domain entities + EF Core migrations
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine

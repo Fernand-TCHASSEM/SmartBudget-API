@@ -43,24 +43,33 @@ public class TokenService(IConfiguration config) : ITokenService
         return Convert.ToBase64String(randomNumber);
     }
 
-    public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = true,
+            ValidAudience = config["JwtSettings:Audience"],
             ValidateIssuer = true,
+            ValidIssuer = config["JwtSettings:Issuer"],
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]!)),
-            ValidateLifetime = false // We want to get claims from expired token
+            ValidateLifetime = false
         };
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
 
-        if (!(securityToken is JwtSecurityToken jwtSecurityToken) ||
-            !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-            throw new SecurityTokenException("Invalid token");
+            if (securityToken is not JwtSecurityToken jwt ||
+                !jwt.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                return null;
 
-        return principal;
+            return principal;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

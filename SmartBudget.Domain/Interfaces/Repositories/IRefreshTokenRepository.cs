@@ -2,10 +2,9 @@ using SmartBudget.Domain.Entities;
 
 namespace SmartBudget.Domain.Interfaces.Repositories;
 
-public interface IRefreshTokenRepository
+public interface IRefreshTokenRepository : IRepository<RefreshToken>
 {
-    Task<RefreshToken> AddAsync(RefreshToken token);
-    Task<RefreshToken?> GetByTokenAsync(string token);
-    Task RevokeAsync(string token);
-    Task RevokeAllByUserIdAsync(string userId);
+    Task<RefreshToken?> GetByTokenAsync(string token, CancellationToken ct = default);
+    Task RevokeAsync(string token, CancellationToken ct = default);
+    Task RevokeAllByUserIdAsync(string userId, CancellationToken ct = default);
 }

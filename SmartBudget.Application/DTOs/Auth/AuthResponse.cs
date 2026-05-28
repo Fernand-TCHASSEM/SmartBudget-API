@@ -1,9 +1,11 @@
+using SmartBudget.Application.DTOs.User;
+
 namespace SmartBudget.Application.DTOs.Auth;
 
-public record RegisterResponse(
+public record AuthResponse(
     string AccessToken,
     string RefreshToken,
-    int ExpriesIn,
+    int ExpiresIn,
     string TokenType = "Bearer",
     UserResponse? User = null
 );

@@ -1,6 +1,6 @@
 using SmartBudget.Domain.Enums;
 
-namespace SmartBudget.Application.DTOs.Auth;
+namespace SmartBudget.Application.DTOs.User;
 
 public record UserResponse(
     string Id,
