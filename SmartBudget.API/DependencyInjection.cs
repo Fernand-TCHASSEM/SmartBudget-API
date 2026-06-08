@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
+using SmartBudget.API.Authorization;
 using SmartBudget.API.Results;
 
 namespace SmartBudget.API;
@@ -47,6 +49,10 @@ public static class DependencyInjection
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
             };
         });
+
+        services.AddAuthorization();
+        services.AddSingleton<IAuthorizationHandler, UserAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, CategoryAuthorizationHandler>();
 
         return services;
     }

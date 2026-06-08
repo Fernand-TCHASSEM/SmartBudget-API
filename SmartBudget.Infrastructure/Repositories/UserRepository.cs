@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using SmartBudget.Domain.Entities;
 using SmartBudget.Domain.Interfaces.Repositories;
 using SmartBudget.Infrastructure.Persistence;

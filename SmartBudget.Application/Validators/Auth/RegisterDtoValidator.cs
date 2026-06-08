@@ -21,8 +21,11 @@ public class RegisterDtoValidator : AbstractValidator<RegisterRequest>
             .WithMessage("Email is already in use.");
 
         RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+
         RuleFor(x=> x.FirstName).NotEmpty().MaximumLength(100);
+
         RuleFor(x => x.LastName).MaximumLength(100);
+
         RuleFor(x => x.Currency).IsInEnum()
             .WithMessage($"Currency must be one of: {string.Join(", ", Enum.GetNames<Currency>())}.");
     }

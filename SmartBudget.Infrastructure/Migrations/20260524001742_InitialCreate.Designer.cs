@@ -25,6 +25,81 @@ namespace SmartBudget.Infrastructure.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("SmartBudget.Domain.Entities.Category", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)")
+                        .HasDefaultValue("#6B7280")
+                        .HasColumnName("color");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasDefaultValue("❓")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsIncome")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_income");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categories");
+
+                    b.HasIndex("DeletedAt")
+                        .HasDatabaseName("ix_categories_deleted_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_categories_user_id");
+
+                    b.ToTable("categories", (string)null);
+                });
+
             modelBuilder.Entity("SmartBudget.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<string>("Id")
@@ -61,6 +136,9 @@ namespace SmartBudget.Infrastructure.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_refresh_tokens_user_id");
+
+                    b.HasIndex("Token")
+                        .HasDatabaseName("ix_refresh_tokens_token");
 
                     b.ToTable("refresh_tokens", (string)null);
                 });
@@ -127,11 +205,25 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("DeletedAt")
+                        .HasDatabaseName("ix_users_deleted_at");
+
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("SmartBudget.Domain.Entities.Category", b =>
+                {
+                    b.HasOne("SmartBudget.Domain.Entities.User", "User")
+                        .WithMany("Categories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_categories_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartBudget.Domain.Entities.RefreshToken", b =>
@@ -148,6 +240,8 @@ namespace SmartBudget.Infrastructure.Migrations
 
             modelBuilder.Entity("SmartBudget.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Categories");
+
                     b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618

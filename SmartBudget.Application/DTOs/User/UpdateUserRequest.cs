@@ -1,11 +1,11 @@
 using SmartBudget.Domain.Enums;
 
-namespace SmartBudget.Application.DTOs.Auth;
+namespace SmartBudget.Application.DTOs.User;
 
-public record RegisterRequest (
-    string Email,
+public record UpdateUserRequest (
     string FirstName,
-    string Password,
+    byte MonthStartDay,
+    string? Password,
     string? LastName = null,
     Currency Currency = Currency.CAD
 );

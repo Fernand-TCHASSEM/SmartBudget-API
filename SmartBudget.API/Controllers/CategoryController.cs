@@ -1,0 +1,87 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SmartBudget.API.Authorization.Operation;
+using SmartBudget.Application.DTOs.Category;
+using SmartBudget.Application.Services;
+
+namespace SmartBudget.API.Controllers;
+
+[Route("api/categories")]
+[ApiController]
+[Authorize]
+[Produces("application/json")]
+public class CategoryController(
+    CategoryService categoryService,
+    IAuthorizationService authorizationService) : ControllerBase
+{
+    /// <summary>List all categories visible to the current user (own + system defaults).</summary>
+    [HttpGet]
+    [ProducesResponseType<IEnumerable<CategoryResponse>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Index(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        return Ok(await categoryService.GetAllAsync(userId, ct));
+    }
+
+    /// <summary>Get a single category by ID.</summary>
+    [HttpGet("{id}")]
+    [ProducesResponseType<CategoryResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Show(string id, CancellationToken ct)
+    {
+        var category = await categoryService.GetByIdAsync(id, ct);
+        if (category is null) return NotFound();
+
+        var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.View);
+        if (!auth.Succeeded) return Forbid();
+
+        return Ok(category);
+    }
+
+    /// <summary>Create a new user-defined category.</summary>
+    [HttpPost]
+    [ProducesResponseType<CategoryResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Store(CreateCategoryRequest dto, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var response = await categoryService.CreateAsync(userId, dto, ct);
+        return CreatedAtAction(nameof(Show), new { id = response.Id }, response);
+    }
+
+    /// <summary>Update a user-defined category.</summary>
+    [HttpPut("{id}")]
+    [ProducesResponseType<CategoryResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(string id, UpdateCategoryRequest dto, CancellationToken ct)
+    {
+        var category = await categoryService.GetByIdAsync(id, ct);
+        if (category is null) return NotFound();
+
+        var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.Update);
+        if (!auth.Succeeded) return Forbid();
+
+        return Ok(await categoryService.UpdateAsync(id, dto, ct));
+    }
+
+    /// <summary>Soft-delete a user-defined category.</summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Destroy(string id, CancellationToken ct)
+    {
+        var category = await categoryService.GetByIdAsync(id, ct);
+        if (category is null) return NotFound();
+
+        var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.Delete);
+        if (!auth.Succeeded) return Forbid();
+
+        await categoryService.DeleteAsync(id, ct);
+        return NoContent();
+    }
+}

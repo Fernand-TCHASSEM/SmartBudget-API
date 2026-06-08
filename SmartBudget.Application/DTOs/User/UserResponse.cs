@@ -9,5 +9,8 @@ public record UserResponse(
     string? LastName,
     Currency Currency,
     byte MonthStartDay,
-    DateTime CreatedAt
+    bool IsActive,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    DateTime? DeletedAt
 );

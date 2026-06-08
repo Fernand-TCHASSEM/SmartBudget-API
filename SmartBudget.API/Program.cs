@@ -2,6 +2,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using SmartBudget.API;
 using SmartBudget.Application;
+using SmartBudget.Domain.Interfaces;
 using SmartBudget.Infrastructure;
 
 
@@ -52,6 +53,12 @@ try
     if (app.Environment.IsProduction())
     {
         app.UseHttpsRedirection();
+    }
+
+    using (var scope = app.Services.CreateScope())
+    {
+        foreach (var seeder in scope.ServiceProvider.GetServices<IDataSeeder>())
+            await seeder.SeedAsync();
     }
 
     app.Run();

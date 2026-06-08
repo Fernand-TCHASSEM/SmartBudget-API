@@ -137,7 +137,10 @@ public class AuthService(
                 LastName: user.LastName,
                 Currency: user.Currency,
                 MonthStartDay: user.MonthStartDay,
-                CreatedAt: user.CreatedAt
+                IsActive: user.IsActive,
+                CreatedAt: user.CreatedAt,
+                UpdatedAt: user.UpdatedAt,
+                DeletedAt: user.DeletedAt
             )
         );
     }

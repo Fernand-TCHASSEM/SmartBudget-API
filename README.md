@@ -21,6 +21,8 @@
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
 - [JWT Authentication — Implementation Guide](#jwt-authentication--implementation-guide)
+- [Automatic Timestamp Tracking](#automatic-timestamp-tracking)
+- [Resource-based Authorization](#resource-based-authorization)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
 - [Roadmap](#roadmap)
@@ -255,6 +257,8 @@ SmartBudget.Domain/
 │   └── ImportStatus.cs
 ├── Interfaces/
 │   ├── ISoftDeletable.cs
+│   ├── IHasTimestamps.cs
+│   ├── IDataSeeder.cs
 │   ├── Repositories/
 │   │   ├── IRepository.cs
 │   │   ├── IUserRepository.cs
@@ -269,6 +273,8 @@ SmartBudget.Domain/
 SmartBudget.Application/
 ├── Services/
 │   ├── AuthService.cs
+│   ├── UserService.cs
+│   ├── CategoryService.cs
 │   ├── ImportCsvService.cs
 │   ├── ImportPdfService.cs
 │   ├── CategoryRuleEngine.cs
@@ -279,27 +285,43 @@ SmartBudget.Application/
 │   │   ├── RegisterRequest.cs
 │   │   ├── AuthResponse.cs
 │   │   ├── LoginRequest.cs
-│   │   └── RefreshRequest.cs
+│   │   ├── RefreshRequest.cs
+│   │   └── RevokeRequest.cs
 │   ├── User/
-│   │   └── UserResponse.cs
+│   │   ├── UserResponse.cs
+│   │   └── UpdateUserRequest.cs
+│   ├── Category/
+│   │   ├── CategoryResponse.cs
+│   │   ├── CreateCategoryRequest.cs
+│   │   └── UpdateCategoryRequest.cs
 │   ├── Transactions/
 │   ├── Dashboard/
 │   └── Import/
+├── Errors/
+│   ├── AuthError.cs
+│   └── CategoryError.cs
 ├── Validators/
 │   ├── Auth/
 │   │   ├── RegisterDtoValidator.cs
 │   │   ├── LoginDtoValidator.cs
-│   │   └── RefreshTokenDtoValidator.cs
-│   └── ImportValidator.cs
+│   │   ├── RefreshTokenDtoValidator.cs
+│   │   └── RevokeTokenDtoValidator.cs
+│   ├── User/
+│   │   └── UpdateUserDtoValidator.cs
+│   └── Category/
+│       ├── CreateCategoryDtoValidator.cs
+│       └── UpdateCategoryDtoValidator.cs
 └── DependencyInjection.cs
 
 SmartBudget.Infrastructure/
 ├── Persistence/
 │   ├── Configurations/
 │   │   ├── UserConfiguration.cs
-│   │   └── RefreshTokenConfiguration.cs
+│   │   ├── RefreshTokenConfiguration.cs
+│   │   └── CategoryConfiguration.cs
 │   ├── SmartBudgetDbContext.cs
 │   ├── SoftDeleteInterceptor.cs
+│   ├── HasTimestampsInterceptor.cs
 │   └── Migrations/
 ├── Repositories/
 │   ├── Repository.cs
@@ -308,6 +330,8 @@ SmartBudget.Infrastructure/
 │   ├── TransactionRepository.cs
 │   ├── CategoryRepository.cs
 │   └── BudgetRepository.cs
+├── Seeders/
+│   └── CategorySeeder.cs
 ├── Services/
 │   ├── TokenService.cs
 │   └── PasswordHasher.cs
@@ -317,12 +341,19 @@ SmartBudget.Infrastructure/
 └── DependencyInjection.cs
 
 SmartBudget.API/
+├── Authorization/
+│   ├── Operation/
+│   │   ├── CategoryOperations.cs
+│   │   └── UserOperations.cs
+│   ├── CategoryAuthorizationHandler.cs
+│   └── UserAuthorizationHandler.cs
 ├── Controllers/
 │   ├── AuthController.cs
+│   ├── UserController.cs
+│   ├── CategoryController.cs
 │   ├── TransactionsController.cs
 │   ├── ImportsController.cs
 │   ├── DashboardController.cs
-│   ├── CategoriesController.cs
 │   └── BudgetsController.cs
 ├── Results/
 │   └── UnprocessableEntityResultFactory.cs
@@ -511,6 +542,60 @@ POST /api/auth/revoke  [Authorize]
 
 ---
 
+## Automatic Timestamp Tracking
+
+All business entities that need an `updated_at` column implement `IHasTimestamps`. A dedicated EF Core interceptor sets the value automatically on every save — no service or controller ever touches it manually.
+
+```
+SmartBudget.Domain/Interfaces/IHasTimestamps.cs   ← interface: UpdatedAt
+SmartBudget.Infrastructure/Persistence/HasTimestampsInterceptor.cs  ← sets UpdatedAt on EntityState.Modified
+```
+
+**Key rule:** `HasTimestampsInterceptor` runs **before** `SoftDeleteInterceptor` in the interceptor chain. When a soft delete occurs, the entity is still `EntityState.Deleted` when the timestamps interceptor runs — so `UpdatedAt` is intentionally **not** updated on soft delete.
+
+To add timestamp tracking to a new entity:
+1. Implement `IHasTimestamps` on the entity class — no other changes needed.
+
+---
+
+## Resource-based Authorization
+
+Protected resources (User, Category) use ASP.NET Core's `IAuthorizationService` with resource-based handlers. Authorization is evaluated in the controller **before** the service is called — the service contains no ownership logic.
+
+```
+SmartBudget.API/Authorization/
+├── Operation/
+│   ├── CategoryOperations.cs   ← View, Update, Delete
+│   └── UserOperations.cs       ← View, Update
+├── CategoryAuthorizationHandler.cs
+└── UserAuthorizationHandler.cs
+```
+
+**Request flow for a mutating endpoint:**
+```
+[Authorize] middleware     ← validates JWT (authentication)
+       ↓
+Controller loads resource  ← GetByIdAsync → 404 if missing
+       ↓
+authorizationService       ← runs matching IAuthorizationHandler
+  .AuthorizeAsync(User, resource, Operation)
+       ↓
+Handler evaluates rules    ← Succeed / implicit Fail
+       ↓
+Service executes           ← pure business logic, no auth concern
+```
+
+**`context.Fail()` vs doing nothing:**
+- **Do nothing** — "I have no opinion"; other handlers can still succeed the requirement. Use for ownership checks.
+- **`context.Fail()`** — hard denial that overrides all other handlers. Use only for absolute invariants (e.g. system categories that nobody can modify).
+
+To add authorization for a new resource:
+1. Create `Operation/XxxOperations.cs` with the required operations.
+2. Create `XxxAuthorizationHandler.cs` implementing `AuthorizationHandler<OperationAuthorizationRequirement, XxxResponse>`.
+3. Register in `DependencyInjection.cs`: `services.AddSingleton<IAuthorizationHandler, XxxAuthorizationHandler>();`
+
+---
+
 ## API Documentation
 
 Interactive documentation is automatically generated via **Scalar** (OpenAPI).
@@ -521,23 +606,29 @@ http://localhost:8080/scalar
 
 ### Key Endpoints
 
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/auth/register` | User registration |
-| `POST` | `/api/auth/login` | Login and get JWT |
-| `POST` | `/api/auth/refresh` | Refresh access token |
-| `POST` | `/api/auth/revoke` | Revoke refresh token (logout) |
-| `GET` | `/api/transactions` | Paginated list with filters |
-| `PATCH` | `/api/transactions/{id}/category` | Update transaction category |
-| `POST` | `/api/imports/csv` | Import CSV bank statement |
-| `POST` | `/api/imports/pdf` | Import PDF bank statement |
-| `GET` | `/api/dashboard/summary` | Monthly summary |
-| `GET` | `/api/dashboard/by-category` | Breakdown by category |
-| `GET` | `/api/dashboard/trends` | Trend over N months |
-| `GET/POST/DELETE` | `/api/categories` | Categories CRUD |
-| `GET/POST/DELETE` | `/api/rules` | Rules CRUD |
-| `GET/POST/DELETE` | `/api/budgets` | Budgets CRUD |
-| `GET` | `/api/exports/pdf` | Filtered PDF export |
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | — | User registration, returns token pair |
+| `POST` | `/api/auth/login` | — | Login, returns token pair |
+| `POST` | `/api/auth/refresh` | — | Rotate access + refresh token |
+| `POST` | `/api/auth/revoke` | Bearer | Revoke refresh token (logout) |
+| `GET` | `/api/users/{id}` | Bearer + owner | Get user profile |
+| `PUT` | `/api/users/{id}` | Bearer + owner | Update profile (name, currency, password) |
+| `GET` | `/api/categories` | Bearer | List own + system categories |
+| `GET` | `/api/categories/{id}` | Bearer + owner/default | Get category by ID |
+| `POST` | `/api/categories` | Bearer | Create user-defined category |
+| `PUT` | `/api/categories/{id}` | Bearer + owner | Update user-defined category |
+| `DELETE` | `/api/categories/{id}` | Bearer + owner | Soft-delete user-defined category |
+| `GET` | `/api/transactions` | Bearer | Paginated list with filters |
+| `PATCH` | `/api/transactions/{id}/category` | Bearer | Update transaction category |
+| `POST` | `/api/imports/csv` | Bearer | Import CSV bank statement |
+| `POST` | `/api/imports/pdf` | Bearer | Import PDF bank statement |
+| `GET` | `/api/dashboard/summary` | Bearer | Monthly summary |
+| `GET` | `/api/dashboard/by-category` | Bearer | Breakdown by category |
+| `GET` | `/api/dashboard/trends` | Bearer | Trend over N months |
+| `GET/POST/DELETE` | `/api/rules` | Bearer | Category rules CRUD |
+| `GET/POST/DELETE` | `/api/budgets` | Bearer | Budgets CRUD |
+| `GET` | `/api/exports/pdf` | Bearer | Filtered PDF export |
 
 All protected endpoints require an `Authorization: Bearer {token}` header.
 
@@ -566,8 +657,13 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] JWT authentication — register endpoint (access + refresh token)
 - [x] JWT authentication — login endpoint
 - [x] JWT authentication — refresh endpoint (token rotation)
-- [ ] JWT authentication — revoke endpoint
-- [ ] Remaining domain entities + EF Core migrations
+- [x] JWT authentication — revoke endpoint
+- [x] Automatic `UpdatedAt` tracking via `IHasTimestamps` + `HasTimestampsInterceptor`
+- [x] Resource-based authorization (`IAuthorizationHandler`) for User and Category
+- [x] Category domain entity + EF Core configuration + seeder (12 system categories)
+- [x] Category CRUD endpoints (GET, POST, PUT, DELETE) with ownership policies
+- [x] User profile endpoints (GET, PUT) with ownership policies
+- [ ] Remaining domain entities + EF Core migrations (Transaction, Budget, BankAccount…)
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine
 - [ ] PDF import (PdfPig)

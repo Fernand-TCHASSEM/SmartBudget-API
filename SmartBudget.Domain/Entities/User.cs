@@ -4,12 +4,14 @@ using SmartBudget.Domain.Interfaces;
 
 namespace SmartBudget.Domain.Entities;
 
-public class User : ISoftDeletable
+public class User : ISoftDeletable, IHasTimestamps
 {
     [Length(36, 36)]
     public string Id { get; init; } = Guid.NewGuid().ToString();
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+
+    public ICollection<Category> Categories { get; set; } = [];
 
     [MaxLength(255)]
     [EmailAddress]
