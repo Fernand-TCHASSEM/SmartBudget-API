@@ -23,6 +23,7 @@
 - [JWT Authentication — Implementation Guide](#jwt-authentication--implementation-guide)
 - [Automatic Timestamp Tracking](#automatic-timestamp-tracking)
 - [Resource-based Authorization](#resource-based-authorization)
+- [Rate Limiting — Redis Sliding Window](#rate-limiting--redis-sliding-window)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
 - [Roadmap](#roadmap)
@@ -86,6 +87,7 @@ This project is built as a technical portfolio piece demonstrating proficiency i
 | UI Components | Angular Material |
 | Charts | ng2-charts / Chart.js |
 | Database | MySQL 8.4 |
+| Cache / Rate Limiting | Redis 7 + StackExchange.Redis |
 | Containerization | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Hosting | Azure App Service + Azure Static Web Apps |
@@ -140,11 +142,13 @@ cd smartbudget
 
 ### 2. Configure the application settings
 
+`appsettings.Development.json` is tracked with Docker defaults — **no action needed** if you run via Docker Compose.
+
+If you run outside Docker (local .NET), copy the example and fill in your values:
+
 ```bash
 cp SmartBudget.API/appsettings.Development.json.example SmartBudget.API/appsettings.Development.json
 ```
-
-Edit `appsettings.Development.json` with your local values (see [Configuration](#configuration)).
 
 ### 3. Start the containers
 
@@ -155,6 +159,7 @@ docker compose up -d
 This starts:
 - `smart_budget_aspnet` — the .NET API (port 8080)
 - `smart_budget_mysql` — the MySQL database (port 3306)
+- `smart_budget_redis` — the Redis cache / rate-limit store (port 6379)
 
 ### 4. Open in VS Code (Dev Container)
 
@@ -195,31 +200,59 @@ ASP.NET Core uses a layered configuration system — no `.env` file required.
 
 | File | Purpose | Committed to Git |
 |---|---|---|
-| `appsettings.json` | Default values, no secrets | Yes |
-| `appsettings.Development.json` | Local development values | No — in `.gitignore` |
-| `appsettings.Production.json` | Production values | No — in `.gitignore` |
-| `appsettings.Development.json.example` | Template without secrets | Yes |
+| `appsettings.json` | Base defaults — all keys, no secrets | Yes |
+| `appsettings.Development.json` | Docker dev overrides (container hostnames, dev JWT key) | Yes |
+| `appsettings.Development.json.example` | Template for running outside Docker — copy and fill in | Yes |
+| `appsettings.Production.json` | Production secrets | No — in `.gitignore` |
 
-**`appsettings.Development.json`** (created from the example above):
+**`appsettings.Development.json`** — tracked, Docker dev defaults (container hostnames, passwordless root):
 
 ```json
 {
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft.AspNetCore": "Warning",
+        "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+      }
+    }
+  },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=smart_budget_mysql;Port=3306;Database=smart_budget;User Id=smartbudget;Password=SmartBudget123!;"
+    "DefaultConnection": "Server=mysql_database;Port=3306;Database=smart_budget;User=root;Password=;"
+  },
+  "Redis": {
+    "ConnectionString": "redis_database:6379"
   },
   "JwtSettings": {
-    "SecretKey": "your-super-secret-key-minimum-32-characters",
-    "Issuer": "SmartBudget",
-    "Audience": "SmartBudgetUsers",
-    "AccessTokenExpiryMinutes": 15,
-    "RefreshTokenExpiryDays": 7
+    "SecretKey": "your-dev-secret-key-minimum-32-characters"
+  }
+}
+```
+
+**`appsettings.Development.json.example`** — copy this when running outside Docker, then fill in your local values:
+
+```bash
+cp SmartBudget.API/appsettings.Development.json.example SmartBudget.API/appsettings.Development.json
+```
+
+**`appsettings.Production.json`** — gitignored, never committed. Fill in production secrets on the server or Azure App Service:
+
+```json
+{
+  "Serilog": { "MinimumLevel": { "Default": "Warning" } },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_HOST;Port=3306;Database=smart_budget;User=smartbudget;Password=YOUR_PASSWORD;"
+  },
+  "Redis": {
+    "ConnectionString": "YOUR_REDIS_HOST:6380,password=YOUR_PASSWORD,ssl=True,abortConnect=False"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-production-secret-key-minimum-32-characters"
   },
   "AzureBlob": {
-    "ConnectionString": "",
+    "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net",
     "ContainerName": "smartbudget-files"
-  },
-  "Serilog": {
-    "LogFilePath": "/app/logs/smartbudget-.log"
   }
 }
 ```
@@ -230,11 +263,12 @@ ASP.NET Core uses a layered configuration system — no `.env` file required.
 environment:
   - ASPNETCORE_ENVIRONMENT=Development
   - ASPNETCORE_URLS=http://+:8080
-  - ConnectionStrings__DefaultConnection=Server=smart_budget_mysql;Port=3306;...
+  - ConnectionStrings__DefaultConnection=Server=mysql_database;Port=3306;...
   - JwtSettings__SecretKey=your-secret-key
+  - Redis__ConnectionString=redis_database:6379
 ```
 
-> Never commit `appsettings.Development.json` or `appsettings.Production.json`. Both are listed in `.gitignore`.
+> `appsettings.Development.json` is committed with Docker defaults so `docker compose up` works out of the box. `appsettings.Production.json` is gitignored — inject production secrets via environment variables or Azure App Service configuration.
 
 ---
 
@@ -268,7 +302,8 @@ SmartBudget.Domain/
 │   │   └── IBudgetRepository.cs
 │   └── Services/
 │       ├── ITokenService.cs
-│       └── IPasswordHasher.cs
+│       ├── IPasswordHasher.cs
+│       └── IRateLimitService.cs
 
 SmartBudget.Application/
 ├── Services/
@@ -334,7 +369,8 @@ SmartBudget.Infrastructure/
 │   └── CategorySeeder.cs
 ├── Services/
 │   ├── TokenService.cs
-│   └── PasswordHasher.cs
+│   ├── PasswordHasher.cs
+│   └── RateLimitService.cs
 ├── Parsers/
 │   ├── CsvParser.cs
 │   └── PdfParser.cs
@@ -358,7 +394,8 @@ SmartBudget.API/
 ├── Results/
 │   └── UnprocessableEntityResultFactory.cs
 ├── Middlewares/
-│   └── ExceptionMiddleware.cs
+│   ├── ExceptionMiddleware.cs
+│   └── RateLimitMiddleware.cs
 ├── DependencyInjection.cs
 ├── appsettings.json
 ├── appsettings.Development.json.example
@@ -596,6 +633,82 @@ To add authorization for a new resource:
 
 ---
 
+## Rate Limiting — Redis Sliding Window
+
+All API endpoints are protected by a distributed rate limiter backed by **Redis**. It uses a sliding window algorithm implemented with a Lua script (atomic execution — no race conditions under concurrent requests).
+
+### How it works
+
+```
+Request → RateLimitMiddleware
+               ↓
+   Determine key + limits
+   (IP or userId / auth vs global)
+               ↓
+   Redis Lua script (atomic)
+   ZREMRANGEBYSCORE + ZCARD + ZADD + PEXPIRE
+               ↓
+   count < limit → 200 + X-RateLimit-* headers
+   count ≥ limit → 429 + Retry-After header
+```
+
+### Policies
+
+| Endpoint group | Key | Limit | Window |
+|---|---|---|---|
+| `/api/auth/*` | Client IP | 10 requests | 60 s |
+| All other endpoints (anonymous) | Client IP | 200 requests | 60 s |
+| All other endpoints (authenticated) | User ID (from JWT) | 200 requests | 60 s |
+
+Auth endpoints are always keyed by IP regardless of authentication state — this prevents an attacker with a stolen token from bypassing brute-force protection.
+
+### Response headers
+
+Every response includes:
+
+| Header | Description |
+|---|---|
+| `X-RateLimit-Limit` | Maximum requests allowed in the window |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `Retry-After` | Seconds until the window resets (only on `429`) |
+
+### 429 response body
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc6585#section-4",
+  "title": "Too Many Requests",
+  "status": 429,
+  "retryAfterSeconds": 42
+}
+```
+
+### Files
+
+```
+SmartBudget.Domain/Interfaces/Services/IRateLimitService.cs   ← interface
+SmartBudget.Infrastructure/Services/RateLimitService.cs       ← Redis implementation (Lua script)
+SmartBudget.API/Middlewares/RateLimitMiddleware.cs            ← middleware (runs before authentication)
+```
+
+### Configuration
+
+Configured via `RateLimitSettings` in `appsettings.json`:
+
+```json
+"RateLimitSettings": {
+  "Enabled": true,
+  "GlobalWindowSeconds": 60,
+  "GlobalMaxRequests": 200,
+  "AuthWindowSeconds": 60,
+  "AuthMaxRequests": 10
+}
+```
+
+Set `"Enabled": false` to disable rate limiting entirely (e.g. during integration tests).
+
+---
+
 ## API Documentation
 
 Interactive documentation is automatically generated via **Scalar** (OpenAPI).
@@ -663,6 +776,7 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] Category domain entity + EF Core configuration + seeder (12 system categories)
 - [x] Category CRUD endpoints (GET, POST, PUT, DELETE) with ownership policies
 - [x] User profile endpoints (GET, PUT) with ownership policies
+- [x] Redis rate limiting — sliding window middleware (global + per-auth-endpoint policies)
 - [ ] Remaining domain entities + EF Core migrations (Transaction, Budget, BankAccount…)
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine

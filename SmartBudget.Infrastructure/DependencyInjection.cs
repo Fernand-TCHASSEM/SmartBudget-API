@@ -8,6 +8,7 @@ using SmartBudget.Infrastructure.Persistence;
 using SmartBudget.Infrastructure.Repositories;
 using SmartBudget.Infrastructure.Seeders;
 using SmartBudget.Infrastructure.Services;
+using StackExchange.Redis;
 
 namespace SmartBudget.Infrastructure;
 
@@ -28,6 +29,13 @@ public static class DependencyInjection
                 sp.GetRequiredService<SoftDeleteInterceptor>(),
             ])
         );
+
+        // Redis
+        var redisConnectionString = config["Redis:ConnectionString"]
+            ?? throw new InvalidOperationException("Redis:ConnectionString is not configured.");
+        services.AddSingleton<IConnectionMultiplexer>(
+            ConnectionMultiplexer.Connect(redisConnectionString));
+        services.AddSingleton<IRateLimitService, RateLimitService>();
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();

@@ -1,6 +1,7 @@
 using Scalar.AspNetCore;
 using Serilog;
 using SmartBudget.API;
+using SmartBudget.API.Middlewares;
 using SmartBudget.Application;
 using SmartBudget.Domain.Interfaces;
 using SmartBudget.Infrastructure;
@@ -37,6 +38,8 @@ try
     builder.Services.AddInfrastructure(configuration);
 
     var app = builder.Build();
+
+    app.UseMiddleware<RateLimitMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseExceptionHandler();
