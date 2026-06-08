@@ -9,12 +9,12 @@
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=mysql_database;Port=3306;Database=smart_budget;User=root;Password=;"
+    "DefaultConnection": "Server=localhost;Port=3306;Database=smart_budget;User=smartbudget;Password=YOUR_PASSWORD;"
   },
   "Redis": {
-    "ConnectionString": "redis_database:6379"
+    "ConnectionString": "localhost:6379"
   },
   "JwtSettings": {
-    "SecretKey": "eqFMAHC2faBl44b8kRD9P84lFgrqPiDf"
+    "SecretKey": "your-super-secret-key-minimum-32-characters"
   }
 }
