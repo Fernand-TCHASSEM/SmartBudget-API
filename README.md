@@ -16,6 +16,7 @@
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
+- [AI Integration](#ai-integration)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
 - [Configuration](#configuration)
@@ -93,6 +94,7 @@ This project is built as a technical portfolio piece demonstrating proficiency i
 | Hosting | Azure App Service + Azure Static Web Apps |
 | File Storage | Azure Blob Storage |
 | Monitoring | Azure Application Insights |
+| AI Categorization | Ollama (local dev) + Google Gemini Free Tier (production) |
 
 ---
 
@@ -116,6 +118,21 @@ API → Application → Domain ← Infrastructure
 ```
 
 **Soft Delete:** all business entities implement `ISoftDeletable` (`deleted_at`). A Global Query Filter in EF Core automatically excludes soft-deleted records from all queries — equivalent to Laravel's `SoftDeletes` trait.
+
+---
+
+## AI Integration
+
+SmartBudget uses a two-layer AI strategy for transaction categorization — rule-based engine first, AI fallback for unrecognized labels.
+
+A provider-agnostic interface (`IAiCategorizationService`) allows switching between providers via configuration with no code changes.
+
+| Environment | Provider | Cost |
+|---|---|---|
+| Local development | Ollama (llama3.2 — runs in Docker) | Free |
+| Production (Azure) | Google Gemini 1.5 Flash | Free tier — 1500 req/day |
+
+The AI receives the raw bank label and the list of available categories, and returns a category suggestion with a confidence score. Accepted suggestions are persisted as new categorization rules to reduce future API calls.
 
 ---
 
@@ -780,6 +797,7 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [ ] Remaining domain entities + EF Core migrations (Transaction, Budget, BankAccount…)
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine
+- [ ] AI-powered transaction categorization (Ollama + Gemini)
 - [ ] PDF import (PdfPig)
 - [ ] Angular dashboard + charts
 - [ ] Monthly budgets + alerts

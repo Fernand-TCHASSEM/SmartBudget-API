@@ -1,21 +1,16 @@
-using System.ComponentModel.DataAnnotations;
 using SmartBudget.Domain.Interfaces;
 
 namespace SmartBudget.Domain.Entities;
 
 public class Category : ISoftDeletable, IHasTimestamps
 {
-    [Length(36, 36)]
     public string Id { get; init; } = Guid.NewGuid().ToString();
 
-    [MaxLength(100)]
     public required string Name { get; set; }
 
-    [MaxLength(10)]
-    public required string Icon { get; set; } = "❓";
+    public string Icon { get; set; } = "❓";
 
-    [Length(7, 7)]
-    public required string Color { get; set; } = "#6B7280";
+    public string Color { get; set; } = "#6B7280";
 
     public bool IsDefault { get; set; } = false;
 
@@ -29,7 +24,9 @@ public class Category : ISoftDeletable, IHasTimestamps
 
     public DateTime? DeletedAt { get; set; }
 
-    public User? User { get; set; } = null;
+    public string? UserId { get; set; }
 
-    public string? UserId { get; set; } = null;
+    public User? User { get; set; }
+
+    public ICollection<CategoryRule> CategoryRules { get; set; } = [];
 }
