@@ -2,7 +2,6 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 using SmartBudget.API.Authorization;
@@ -53,6 +52,7 @@ public static class DependencyInjection
         services.AddAuthorization();
         services.AddSingleton<IAuthorizationHandler, UserAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, CategoryAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, CategoryRuleAuthorizationHandler>();
 
         return services;
     }

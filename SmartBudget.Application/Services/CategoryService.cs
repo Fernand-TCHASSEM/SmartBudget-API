@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartBudget.Application.DTOs.Category;
 using SmartBudget.Domain.Entities;
 using SmartBudget.Domain.Interfaces.Repositories;
+using SmartBudget.Domain.Primitives.Pagination;
 
 namespace SmartBudget.Application.Services;
 
@@ -16,9 +17,17 @@ public class CategoryService(
         return categories.Select(MapToResponse);
     }
 
+    public async Task<PagedResponse<CategoryResponse>> GetPagedAsync(string userId, CategoryQuery query, CancellationToken ct = default)
+    {
+        var result = await categoryRepository.GetPagedForUserAsync(
+            userId, query, query.IsIncome, query.IsDefault, ct);
+
+        return result.Map(MapToResponse);
+    }
+
     public async Task<CategoryResponse?> GetByIdAsync(string categoryId, CancellationToken ct = default)
     {
-        var category = await categoryRepository.GetByIdAsync(categoryId, ct);
+        var category = await categoryRepository.FindByAsync(c => c.Id == categoryId, ct);
         return category is null ? null : MapToResponse(category);
     }
 
@@ -28,10 +37,10 @@ public class CategoryService(
         {
             Name      = request.Name,
             UserId    = userId,
-            Icon      = request.Icon ?? "❓",
-            Color     = request.Color ?? "#6B7280",
+            Icon      = request.Icon,
+            Color     = request.Color,
             IsIncome  = request.IsIncome,
-            SortOrder = request.SortOrder ?? 0
+            SortOrder = request.SortOrder
         }, ct);
 
         return MapToResponse(category);
@@ -39,7 +48,7 @@ public class CategoryService(
 
     public async Task<CategoryResponse?> UpdateAsync(string categoryId, UpdateCategoryRequest request, CancellationToken ct = default)
     {
-        var category = await categoryRepository.GetByIdAsync(categoryId, ct);
+        var category = await categoryRepository.FindByAsync(c => c.Id == categoryId, ct);
         if (category is null)
         {
             logger.LogWarning("Category not found: {CategoryId}", categoryId);
@@ -58,7 +67,7 @@ public class CategoryService(
 
     public async Task<bool> DeleteAsync(string categoryId, CancellationToken ct = default)
     {
-        var category = await categoryRepository.GetByIdAsync(categoryId, ct);
+        var category = await categoryRepository.FindByAsync(c => c.Id == categoryId, ct);
         if (category is null)
         {
             logger.LogWarning("Category not found: {CategoryId}", categoryId);

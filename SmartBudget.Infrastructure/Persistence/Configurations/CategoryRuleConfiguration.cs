@@ -14,11 +14,11 @@ public class CategoryRuleConfiguration : IEntityTypeConfiguration<CategoryRule>
         builder.Property(cr => cr.UserId).IsRequired(false).HasMaxLength(36);
         builder.Property(cr => cr.CategoryId).IsRequired().HasMaxLength(36);
 
+        builder.Property(cr => cr.Name).IsRequired(false).HasMaxLength(150);
         builder.Property(cr => cr.Keyword).IsRequired().HasMaxLength(255);
         builder.Property(cr => cr.IsRegex).IsRequired().HasDefaultValue(0);
         builder.Property(cr => cr.Priority).IsRequired().HasMaxLength(100).HasDefaultValue(100);
         builder.Property(cr => cr.CreatedAt).IsRequired();
-        builder.Property(u => u.UpdatedAt).IsRequired();
 
         builder.HasOne(cr => cr.User)
             .WithMany(u => u.CategoryRules)
@@ -35,6 +35,6 @@ public class CategoryRuleConfiguration : IEntityTypeConfiguration<CategoryRule>
         builder.HasIndex(cr => cr.Priority);
         builder.HasIndex(u => u.DeletedAt);
 
-        builder.ToTable("categories");
+        builder.ToTable("category_rules");
     }
 }

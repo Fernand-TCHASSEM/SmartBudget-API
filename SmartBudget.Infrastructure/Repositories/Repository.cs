@@ -1,7 +1,9 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using SmartBudget.Domain.Interfaces.Repositories;
+using SmartBudget.Domain.Primitives.Pagination;
 using SmartBudget.Infrastructure.Persistence;
+using SmartBudget.Infrastructure.Persistence.Extensions;
 
 namespace SmartBudget.Infrastructure.Repositories;
 
@@ -43,4 +45,31 @@ public abstract class Repository<T>(SmartBudgetDbContext db) : IRepository<T> wh
 
     public virtual Task<bool> ExistsByAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default) =>
         Set.AnyAsync(predicate, ct);
+
+    protected async Task<PagedResponse<T>> GetPagedAsync(
+        IQueryable<T> query,
+        PaginationFilter filter,
+        string defaultSort = "",
+        CancellationToken ct = default)
+    {
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+        var sortBy = string.IsNullOrWhiteSpace(filter.SortBy) ? defaultSort : filter.SortBy;
+
+        var total = await query.CountAsync(ct);
+
+        var items = await query
+            .ApplySort(sortBy)
+            .ApplyPagination(page, pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResponse<T>
+        {
+            Data = [.. items],
+            PageNumber = page,
+            PageSize = pageSize,
+            TotalRecords = total,
+            TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+        };
+    }
 }

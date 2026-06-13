@@ -3,9 +3,11 @@ using SmartBudget.Domain.Interfaces;
 
 namespace SmartBudget.Domain.Entities;
 
-public class CategoryRule : ISoftDeletable, IHasTimestamps
+public class CategoryRule : ISoftDeletable
 {
     public string Id { get; init; } = Guid.NewGuid().ToString();
+
+    public string? Name { get; set; }
 
     public required string Keyword { get; set; }
 
@@ -16,8 +18,6 @@ public class CategoryRule : ISoftDeletable, IHasTimestamps
     public RuleSource Source { get; set; } = RuleSource.Manual;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? DeletedAt { get; set; }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartBudget.API.Authorization.Operation;
 using SmartBudget.Application.DTOs.Category;
 using SmartBudget.Application.Services;
+using SmartBudget.Domain.Primitives.Pagination;
 
 namespace SmartBudget.API.Controllers;
 
@@ -15,13 +16,13 @@ public class CategoryController(
     CategoryService categoryService,
     IAuthorizationService authorizationService) : ControllerBase
 {
-    /// <summary>List all categories visible to the current user (own + system defaults).</summary>
+    /// <summary>List categories visible to the current user (own + system defaults) with pagination, search and filters.</summary>
     [HttpGet]
-    [ProducesResponseType<IEnumerable<CategoryResponse>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    [ProducesResponseType<PagedResponse<CategoryResponse>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Index([FromQuery] CategoryQuery query, CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        return Ok(await categoryService.GetAllAsync(userId, ct));
+        return Ok(await categoryService.GetPagedAsync(userId, query, ct));
     }
 
     /// <summary>Get a single category by ID.</summary>

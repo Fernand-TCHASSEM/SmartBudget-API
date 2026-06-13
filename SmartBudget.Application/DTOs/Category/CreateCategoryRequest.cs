@@ -2,8 +2,8 @@ namespace SmartBudget.Application.DTOs.Category;
 
 public record CreateCategoryRequest (
     string Name,
-    string? Icon,
-    string? Color,
     bool IsIncome,
-    int? SortOrder = 0
+    string Icon =  "❓",
+    string Color = "#6B7280",
+    int SortOrder = 0
 );
