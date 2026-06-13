@@ -10,6 +10,7 @@ public class SmartBudgetDbContext(DbContextOptions<SmartBudgetDbContext> options
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<CategoryRule> CategoryRules => Set<CategoryRule>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

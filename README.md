@@ -16,6 +16,7 @@
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
+- [AI Integration](#ai-integration)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
 - [Configuration](#configuration)
@@ -87,12 +88,14 @@ This project is built as a technical portfolio piece demonstrating proficiency i
 | UI Components | Angular Material |
 | Charts | ng2-charts / Chart.js |
 | Database | MySQL 8.4 |
+| Pagination | System.Linq.Dynamic.Core (string-driven ORDER BY + reflection whitelist) |
 | Cache / Rate Limiting | Redis 7 + StackExchange.Redis |
 | Containerization | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Hosting | Azure App Service + Azure Static Web Apps |
 | File Storage | Azure Blob Storage |
 | Monitoring | Azure Application Insights |
+| AI Categorization | Ollama (local dev) + Google Gemini Free Tier (production) |
 
 ---
 
@@ -116,6 +119,21 @@ API → Application → Domain ← Infrastructure
 ```
 
 **Soft Delete:** all business entities implement `ISoftDeletable` (`deleted_at`). A Global Query Filter in EF Core automatically excludes soft-deleted records from all queries — equivalent to Laravel's `SoftDeletes` trait.
+
+---
+
+## AI Integration
+
+SmartBudget uses a two-layer AI strategy for transaction categorization — rule-based engine first, AI fallback for unrecognized labels.
+
+A provider-agnostic interface (`IAiCategorizationService`) allows switching between providers via configuration with no code changes.
+
+| Environment | Provider | Cost |
+|---|---|---|
+| Local development | Ollama (llama3.2 — runs in Docker) | Free |
+| Production (Azure) | Google Gemini 1.5 Flash | Free tier — 1500 req/day |
+
+The AI receives the raw bank label and the list of available categories, and returns a category suggestion with a confidence score. Accepted suggestions are persisted as new categorization rules to reduce future API calls.
 
 ---
 
@@ -299,6 +317,7 @@ SmartBudget.Domain/
 │   │   ├── IRefreshTokenRepository.cs
 │   │   ├── ITransactionRepository.cs
 │   │   ├── ICategoryRepository.cs
+│   │   ├── ICategoryRuleRepository.cs
 │   │   └── IBudgetRepository.cs
 │   └── Services/
 │       ├── ITokenService.cs
@@ -310,6 +329,7 @@ SmartBudget.Application/
 │   ├── AuthService.cs
 │   ├── UserService.cs
 │   ├── CategoryService.cs
+│   ├── CategoryRuleService.cs
 │   ├── ImportCsvService.cs
 │   ├── ImportPdfService.cs
 │   ├── CategoryRuleEngine.cs
@@ -329,6 +349,9 @@ SmartBudget.Application/
 │   │   ├── CategoryResponse.cs
 │   │   ├── CreateCategoryRequest.cs
 │   │   └── UpdateCategoryRequest.cs
+│   ├── CategoryRule/
+│   │   ├── CategoryRuleResponse.cs
+│   │   └── CreateCategoryRuleRequest.cs
 │   ├── Transactions/
 │   ├── Dashboard/
 │   └── Import/
@@ -343,9 +366,11 @@ SmartBudget.Application/
 │   │   └── RevokeTokenDtoValidator.cs
 │   ├── User/
 │   │   └── UpdateUserDtoValidator.cs
-│   └── Category/
-│       ├── CreateCategoryDtoValidator.cs
-│       └── UpdateCategoryDtoValidator.cs
+│   ├── Category/
+│   │   ├── CreateCategoryDtoValidator.cs
+│   │   └── UpdateCategoryDtoValidator.cs
+│   └── CategoryRule/
+│       └── CreateCategoryRuleDtoValidator.cs
 └── DependencyInjection.cs
 
 SmartBudget.Infrastructure/
@@ -364,9 +389,11 @@ SmartBudget.Infrastructure/
 │   ├── RefreshTokenRepository.cs
 │   ├── TransactionRepository.cs
 │   ├── CategoryRepository.cs
+│   ├── CategoryRuleRepository.cs
 │   └── BudgetRepository.cs
 ├── Seeders/
-│   └── CategorySeeder.cs
+│   ├── CategorySeeder.cs
+│   └── CategoryRuleSeeder.cs
 ├── Services/
 │   ├── TokenService.cs
 │   ├── PasswordHasher.cs
@@ -380,13 +407,16 @@ SmartBudget.API/
 ├── Authorization/
 │   ├── Operation/
 │   │   ├── CategoryOperations.cs
+│   │   ├── CategoryRuleOperations.cs
 │   │   └── UserOperations.cs
 │   ├── CategoryAuthorizationHandler.cs
+│   ├── CategoryRuleAuthorizationHandler.cs
 │   └── UserAuthorizationHandler.cs
 ├── Controllers/
 │   ├── AuthController.cs
 │   ├── UserController.cs
 │   ├── CategoryController.cs
+│   ├── CategoryRuleController.cs
 │   ├── TransactionsController.cs
 │   ├── ImportsController.cs
 │   ├── DashboardController.cs
@@ -727,7 +757,7 @@ http://localhost:8080/scalar
 | `POST` | `/api/auth/revoke` | Bearer | Revoke refresh token (logout) |
 | `GET` | `/api/users/{id}` | Bearer + owner | Get user profile |
 | `PUT` | `/api/users/{id}` | Bearer + owner | Update profile (name, currency, password) |
-| `GET` | `/api/categories` | Bearer | List own + system categories |
+| `GET` | `/api/categories` | Bearer | Paginated list (own + system) — `?page`, `pageSize`, `sortBy`, `search`, `isIncome`, `isDefault` |
 | `GET` | `/api/categories/{id}` | Bearer + owner/default | Get category by ID |
 | `POST` | `/api/categories` | Bearer | Create user-defined category |
 | `PUT` | `/api/categories/{id}` | Bearer + owner | Update user-defined category |
@@ -739,7 +769,9 @@ http://localhost:8080/scalar
 | `GET` | `/api/dashboard/summary` | Bearer | Monthly summary |
 | `GET` | `/api/dashboard/by-category` | Bearer | Breakdown by category |
 | `GET` | `/api/dashboard/trends` | Bearer | Trend over N months |
-| `GET/POST/DELETE` | `/api/rules` | Bearer | Category rules CRUD |
+| `GET` | `/api/categories/{id}/rules` | Bearer + view | Paginated rules for a category (own + system) |
+| `POST` | `/api/categories/{id}/rules` | Bearer + view | Add a rule to a category |
+| `DELETE` | `/api/categories/{id}/rules/{ruleId}` | Bearer + owner | Soft-delete a rule |
 | `GET/POST/DELETE` | `/api/budgets` | Bearer | Budgets CRUD |
 | `GET` | `/api/exports/pdf` | Bearer | Filtered PDF export |
 
@@ -775,11 +807,14 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] Resource-based authorization (`IAuthorizationHandler`) for User and Category
 - [x] Category domain entity + EF Core configuration + seeder (12 system categories)
 - [x] Category CRUD endpoints (GET, POST, PUT, DELETE) with ownership policies
+- [x] Category rule endpoints (GET, POST, DELETE) nested under `/api/categories/{id}/rules` with resource-based authorization
 - [x] User profile endpoints (GET, PUT) with ownership policies
 - [x] Redis rate limiting — sliding window middleware (global + per-auth-endpoint policies)
+- [x] Generic pagination — `PagedResponse<T>` + `PaginationFilter` in Domain, `QueryableExtensions` (sort + paginate on `IQueryable<T>`), opt-in per repository
 - [ ] Remaining domain entities + EF Core migrations (Transaction, Budget, BankAccount…)
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine
+- [ ] AI-powered transaction categorization (Ollama + Gemini)
 - [ ] PDF import (PdfPig)
 - [ ] Angular dashboard + charts
 - [ ] Monthly budgets + alerts

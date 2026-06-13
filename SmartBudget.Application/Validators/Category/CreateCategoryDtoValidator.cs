@@ -11,14 +11,11 @@ public class CreateCategoryDtoValidator : AbstractValidator<CreateCategoryReques
             .NotEmpty()
             .MaximumLength(100);
         RuleFor(c => c.Icon)
-            .MaximumLength(10)
-            .When(c => c.Icon is not null);
+            .MaximumLength(10);
         RuleFor(c => c.Color)
             .Length(7)
-            .Matches("^#[0-9A-Fa-f]{6}$").WithMessage("Color must be a valid hex code.")
-            .When(x => x.Color is not null);
+            .Matches("^#[0-9A-Fa-f]{6}$").WithMessage("Color must be a valid hex code.");
         RuleFor(c => c.SortOrder)
-            .GreaterThanOrEqualTo(0)
-            .When(x => x.SortOrder.HasValue);
+            .GreaterThanOrEqualTo(0);
     }
 }

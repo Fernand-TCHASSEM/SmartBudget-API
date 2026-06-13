@@ -60,7 +60,7 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
-        foreach (var seeder in scope.ServiceProvider.GetServices<IDataSeeder>())
+        foreach (var seeder in scope.ServiceProvider.GetServices<IDataSeeder>().OrderBy(s => s.Order))
             await seeder.SeedAsync();
     }
 

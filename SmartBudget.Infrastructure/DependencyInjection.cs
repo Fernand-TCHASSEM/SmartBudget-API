@@ -42,7 +42,9 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ICategoryRuleRepository, CategoryRuleRepository>();
         services.AddScoped<IDataSeeder, CategorySeeder>();
+        services.AddScoped<IDataSeeder, CategoryRuleSeeder>();
         return services;
     }
 }

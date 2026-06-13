@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartBudget.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using SmartBudget.Infrastructure.Persistence;
 namespace SmartBudget.Infrastructure.Migrations
 {
     [DbContext(typeof(SmartBudgetDbContext))]
-    partial class SmartBudgetDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609205232_AddCategoryRuleTable")]
+    partial class AddCategoryRuleTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -131,11 +134,6 @@ namespace SmartBudget.Infrastructure.Migrations
                         .HasColumnType("varchar(255)")
                         .HasColumnName("keyword");
 
-                    b.Property<string>("Name")
-                        .HasMaxLength(150)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("name");
-
                     b.Property<int>("Priority")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
@@ -146,6 +144,10 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<int>("Source")
                         .HasColumnType("int")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("UserId")
                         .HasMaxLength(36)

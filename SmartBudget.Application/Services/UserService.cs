@@ -14,13 +14,13 @@ public class UserService(
 {
     public async Task<UserResponse?> GetByIdAsync(string userId, CancellationToken ct = default)
     {
-        var user = await userRepository.GetByIdAsync(userId, ct);
+        var user = await userRepository.FindByAsync(u => u.Id == userId, ct);
         return user is null ? null : MapToResponse(user);
     }
 
     public async Task<UserResponse?> UpdateAsync(string userId, UpdateUserRequest request, CancellationToken ct = default)
     {
-        var user = await userRepository.GetByIdAsync(userId, ct);
+        var user = await userRepository.FindByAsync(u => u.Id == userId, ct);
         if (user is null)
         {
             logger.LogWarning("User not found: {UserId}", userId);
