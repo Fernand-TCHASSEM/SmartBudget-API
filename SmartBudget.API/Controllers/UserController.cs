@@ -23,10 +23,10 @@ public class UserController(
     public async Task<IActionResult> Show(string id, CancellationToken ct)
     {
         var userToShow = await userService.GetByIdAsync(id, ct);
-        if (userToShow is null) return NotFound();
+        if (userToShow is null) return Problem("User not found.", statusCode: 404);
 
         var auth = await authorizationService.AuthorizeAsync(User, userToShow, UserOperations.View);
-        if (!auth.Succeeded) return Forbid();
+        if (!auth.Succeeded) return Problem("You do not have permission to access this user.", statusCode: 403);
 
         return Ok(userToShow);
     }
@@ -41,10 +41,10 @@ public class UserController(
     public async Task<IActionResult> Update(string id, UpdateUserRequest dto, CancellationToken ct)
     {
         var userToUpdate = await userService.GetByIdAsync(id, ct);
-        if (userToUpdate is null || !userToUpdate.IsActive) return NotFound();
+        if (userToUpdate is null || !userToUpdate.IsActive) return Problem("User not found.", statusCode: 404);
 
         var auth = await authorizationService.AuthorizeAsync(User, userToUpdate, UserOperations.Update);
-        if (!auth.Succeeded) return Forbid();
+        if (!auth.Succeeded) return Problem("You do not have permission to update this user.", statusCode: 403);
 
         return Ok(await userService.UpdateAsync(id, dto, ct));
     }

@@ -33,10 +33,10 @@ public class CategoryController(
     public async Task<IActionResult> Show(string id, CancellationToken ct)
     {
         var category = await categoryService.GetByIdAsync(id, ct);
-        if (category is null) return NotFound();
+        if (category is null) return Problem("Category not found.", statusCode: 404);
 
         var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.View);
-        if (!auth.Succeeded) return Forbid();
+        if (!auth.Succeeded) return Problem("You do not have permission to access this category.", statusCode: 403);
 
         return Ok(category);
     }
@@ -61,10 +61,10 @@ public class CategoryController(
     public async Task<IActionResult> Update(string id, UpdateCategoryRequest dto, CancellationToken ct)
     {
         var category = await categoryService.GetByIdAsync(id, ct);
-        if (category is null) return NotFound();
+        if (category is null) return Problem("Category not found.", statusCode: 404);
 
         var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.Update);
-        if (!auth.Succeeded) return Forbid();
+        if (!auth.Succeeded) return Problem("You do not have permission to update this category.", statusCode: 403);
 
         return Ok(await categoryService.UpdateAsync(id, dto, ct));
     }
@@ -77,10 +77,10 @@ public class CategoryController(
     public async Task<IActionResult> Destroy(string id, CancellationToken ct)
     {
         var category = await categoryService.GetByIdAsync(id, ct);
-        if (category is null) return NotFound();
+        if (category is null) return Problem("Category not found.", statusCode: 404);
 
         var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.Delete);
-        if (!auth.Succeeded) return Forbid();
+        if (!auth.Succeeded) return Problem("You do not have permission to delete this category.", statusCode: 403);
 
         await categoryService.DeleteAsync(id, ct);
         return NoContent();

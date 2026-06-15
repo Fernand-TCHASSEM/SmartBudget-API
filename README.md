@@ -627,14 +627,16 @@ To add timestamp tracking to a new entity:
 
 ## Resource-based Authorization
 
-Protected resources (User, Category) use ASP.NET Core's `IAuthorizationService` with resource-based handlers. Authorization is evaluated in the controller **before** the service is called — the service contains no ownership logic.
+Protected resources (User, Category, CategoryRule) use ASP.NET Core's `IAuthorizationService` with resource-based handlers. Authorization is evaluated in the controller **before** the service is called — the service contains no ownership logic.
 
 ```
 SmartBudget.API/Authorization/
 ├── Operation/
-│   ├── CategoryOperations.cs   ← View, Update, Delete
-│   └── UserOperations.cs       ← View, Update
+│   ├── CategoryOperations.cs       ← View, Update, Delete
+│   ├── CategoryRuleOperations.cs   ← Delete
+│   └── UserOperations.cs           ← View, Update
 ├── CategoryAuthorizationHandler.cs
+├── CategoryRuleAuthorizationHandler.cs
 └── UserAuthorizationHandler.cs
 ```
 
@@ -771,11 +773,33 @@ http://localhost:8080/scalar
 | `GET` | `/api/dashboard/trends` | Bearer | Trend over N months |
 | `GET` | `/api/categories/{id}/rules` | Bearer + view | Paginated rules for a category (own + system) |
 | `POST` | `/api/categories/{id}/rules` | Bearer + view | Add a rule to a category |
-| `DELETE` | `/api/categories/{id}/rules/{ruleId}` | Bearer + owner | Soft-delete a rule |
+| `DELETE` | `/api/categories/rules/{ruleId}` | Bearer + owner | Soft-delete a rule |
 | `GET/POST/DELETE` | `/api/budgets` | Bearer | Budgets CRUD |
 | `GET` | `/api/exports/pdf` | Bearer | Filtered PDF export |
 
 All protected endpoints require an `Authorization: Bearer {token}` header.
+
+### Error responses
+
+All error responses follow **RFC 7807 ProblemDetails** — no plain strings, no empty bodies:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Category not found."
+}
+```
+
+| Status | Meaning |
+|---|---|
+| `401` | Missing or invalid JWT / bad credentials |
+| `403` | Authenticated but not allowed (ownership check failed) |
+| `404` | Resource does not exist |
+| `422` | Validation failed — body is `ValidationProblemDetails` with per-field errors |
+| `429` | Rate limit exceeded — includes `Retry-After` header |
+| `500` | Unexpected server error |
 
 ---
 
@@ -807,7 +831,7 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] Resource-based authorization (`IAuthorizationHandler`) for User and Category
 - [x] Category domain entity + EF Core configuration + seeder (12 system categories)
 - [x] Category CRUD endpoints (GET, POST, PUT, DELETE) with ownership policies
-- [x] Category rule endpoints (GET, POST, DELETE) nested under `/api/categories/{id}/rules` with resource-based authorization
+- [x] Category rule endpoints — GET/POST nested under `/api/categories/{id}/rules`, DELETE at `/api/categories/rules/{ruleId}` — with resource-based authorization
 - [x] User profile endpoints (GET, PUT) with ownership policies
 - [x] Redis rate limiting — sliding window middleware (global + per-auth-endpoint policies)
 - [x] Generic pagination — `PagedResponse<T>` + `PaginationFilter` in Domain, `QueryableExtensions` (sort + paginate on `IQueryable<T>`), opt-in per repository
