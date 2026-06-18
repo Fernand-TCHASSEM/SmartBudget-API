@@ -12,7 +12,7 @@ using SmartBudget.Infrastructure.Persistence;
 namespace SmartBudget.Infrastructure.Migrations
 {
     [DbContext(typeof(SmartBudgetDbContext))]
-    [Migration("20260618162631_InitialCreate")]
+    [Migration("20260618175416_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -29,9 +29,8 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<string>("AccountType")
                         .IsRequired()
@@ -74,9 +73,8 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_bank_accounts");
@@ -94,16 +92,14 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<string>("CategoryId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("category_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("category_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -130,9 +126,8 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.Property<short>("Year")
                         .HasColumnType("smallint")
@@ -164,16 +159,14 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<string>("Color")
                         .IsRequired()
                         .HasMaxLength(7)
-                        .HasColumnType("char(7)")
-                        .HasColumnName("color")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(7)")
+                        .HasColumnName("color");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -221,9 +214,8 @@ namespace SmartBudget.Infrastructure.Migrations
 
                     b.Property<string>("UserId")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_categories");
@@ -241,16 +233,14 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<string>("CategoryId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("category_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("category_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -289,9 +279,8 @@ namespace SmartBudget.Infrastructure.Migrations
 
                     b.Property<string>("UserId")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_category_rules");
@@ -315,16 +304,14 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<string>("BankAccountId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("bank_account_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("bank_account_id");
 
                     b.Property<string>("BlobUrl")
                         .HasMaxLength(1000)
@@ -359,7 +346,8 @@ namespace SmartBudget.Infrastructure.Migrations
 
                     b.Property<string>("FileType")
                         .IsRequired()
-                        .HasColumnType("enum('CSV','PDF')")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)")
                         .HasColumnName("file_type");
 
                     b.Property<int>("ImporteCount")
@@ -388,9 +376,8 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_import_batches");
@@ -414,9 +401,8 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -441,12 +427,15 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_refresh_tokens");
+
+                    b.HasIndex("Token")
+                        .HasDatabaseName("ix_refresh_tokens_token")
+                        .HasAnnotation("MySql:IndexPrefixLength", new[] { 255 });
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_refresh_tokens_user_id");
@@ -458,9 +447,8 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(12,2)")
@@ -469,15 +457,13 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("BankAccountId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("bank_account_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("bank_account_id");
 
                     b.Property<string>("CategoryId")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("category_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("category_id");
 
                     b.Property<string>("CleanLabel")
                         .IsRequired()
@@ -496,15 +482,13 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("Hash")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("char(64)")
-                        .HasColumnName("hash")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("hash");
 
                     b.Property<string>("ImportBatchId")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("import_batch_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("import_batch_id");
 
                     b.Property<bool>("IsCategoryManual")
                         .ValueGeneratedOnAdd()
@@ -545,9 +529,8 @@ namespace SmartBudget.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("user_id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_transactions");
@@ -584,9 +567,8 @@ namespace SmartBudget.Infrastructure.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(36)
-                        .HasColumnType("char(36)")
-                        .HasColumnName("id")
-                        .IsFixedLength();
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")

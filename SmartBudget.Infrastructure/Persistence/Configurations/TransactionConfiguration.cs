@@ -12,25 +12,20 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(t => t.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(t => t.UserId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(t => t.BankAccountId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(t => t.ImportBatchId)
             .IsRequired(false)
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(t => t.CategoryId)
             .IsRequired(false)
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
 
         builder.Property(t => t.RawLabel).IsRequired().HasMaxLength(500);
         builder.Property(t => t.CleanLabel).IsRequired().HasMaxLength(255);
@@ -47,10 +42,8 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasMaxLength(500);
         builder.Property(t => t.IsExcluded).IsRequired().HasDefaultValue(false);
         builder.Property(t => t.Hash)
-            .HasColumnType("char(64)")
             .IsRequired()
-            .HasMaxLength(64)
-            .IsFixedLength();
+            .HasMaxLength(64);
         builder.Property(t => t.CreatedAt).IsRequired();
         builder.Property(t => t.UpdatedAt).IsRequired();
 

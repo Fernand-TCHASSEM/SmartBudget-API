@@ -12,17 +12,14 @@ public class CategoryRuleConfiguration : IEntityTypeConfiguration<CategoryRule>
         builder.Property(cr => cr.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(cr => cr.UserId)
             .IsRequired(false)
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(cr => cr.CategoryId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
 
         builder.Property(cr => cr.Name).IsRequired(false).HasMaxLength(150);
         builder.Property(cr => cr.Keyword).IsRequired().HasMaxLength(255);

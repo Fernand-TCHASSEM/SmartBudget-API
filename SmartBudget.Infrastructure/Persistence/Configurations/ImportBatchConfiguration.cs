@@ -13,22 +13,19 @@ public class ImportBatchConfiguration : IEntityTypeConfiguration<ImportBatch>
         builder.Property(ib => ib.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(ib => ib.UserId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(ib => ib.BankAccountId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
 
         builder.Property(ib => ib.FileName).IsRequired().HasMaxLength(255);
         builder.Property(ib => ib.FileType)
-            .HasColumnType("enum('CSV','PDF')")
             .IsRequired()
+            .HasMaxLength(3)
             .HasConversion<string>();
         builder.Property(ib => ib.BlobUrl).IsRequired(false).HasMaxLength(1000);
         builder.Property(ib => ib.Status)

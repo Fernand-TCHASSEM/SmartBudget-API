@@ -13,7 +13,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(u => u.Email).IsRequired().HasMaxLength(255);

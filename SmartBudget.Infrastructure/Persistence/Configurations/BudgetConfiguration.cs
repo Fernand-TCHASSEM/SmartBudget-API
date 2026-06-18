@@ -12,17 +12,14 @@ public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
         builder.Property(b => b.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(b => b.UserId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
         builder.Property(b => b.CategoryId)
             .IsRequired()
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
 
         builder.Property(b => b.Year)
             .HasColumnType("smallint")

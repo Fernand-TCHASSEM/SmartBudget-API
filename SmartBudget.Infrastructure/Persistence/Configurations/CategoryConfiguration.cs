@@ -12,17 +12,15 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.Property(c => c.Id)
             .IsRequired()
             .HasMaxLength(36)
-            .IsFixedLength()
             .ValueGeneratedNever();
 
         builder.Property(c => c.UserId)
             .IsRequired(false)
-            .HasMaxLength(36)
-            .IsFixedLength();
+            .HasMaxLength(36);
 
         builder.Property(c => c.Name).IsRequired().HasMaxLength(100);
         builder.Property(c => c.Icon).IsRequired().HasMaxLength(10).HasDefaultValue("❓");
-        builder.Property(c => c.Color).HasColumnType("char(7)").IsRequired().HasMaxLength(7).IsFixedLength();
+        builder.Property(c => c.Color).IsRequired().HasMaxLength(7);
         builder.Property(c => c.IsDefault).IsRequired().HasDefaultValue(false);
         builder.Property(c => c.IsIncome).IsRequired().HasDefaultValue(false);
         builder.Property(c => c.SortOrder).IsRequired().HasDefaultValue(0);
