@@ -10,21 +10,31 @@ public class ImportBatchConfiguration : IEntityTypeConfiguration<ImportBatch>
     public void Configure(EntityTypeBuilder<ImportBatch> builder)
     {
         builder.HasKey(ib => ib.Id);
-        builder.Property(ib => ib.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
+        builder.Property(ib => ib.Id)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength()
+            .ValueGeneratedNever();
 
-        builder.Property(ib => ib.UserId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(ib => ib.BankAccountId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
+        builder.Property(ib => ib.UserId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(ib => ib.BankAccountId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
 
         builder.Property(ib => ib.FileName).IsRequired().HasMaxLength(255);
         builder.Property(ib => ib.FileType)
+            .HasColumnType("enum('CSV','PDF')")
             .IsRequired()
-            .HasConversion<string>()
-            .HasColumnType("enum('CSV','PDF')");
+            .HasConversion<string>();
         builder.Property(ib => ib.BlobUrl).IsRequired(false).HasMaxLength(1000);
         builder.Property(ib => ib.Status)
+            .HasColumnType("enum('PENDING','PROCESSING','COMPLETED','FAILED')")
             .IsRequired()
             .HasConversion<string>()
-            .HasColumnType("enum('PENDING','PROCESSING','COMPLETED','FAILED')")
             .HasDefaultValue(ImportStatus.PENDING);
         builder.Property(ib => ib.TotalRows).IsRequired().HasDefaultValue(0);
         builder.Property(ib => ib.ImporteCount).IsRequired().HasDefaultValue(0);

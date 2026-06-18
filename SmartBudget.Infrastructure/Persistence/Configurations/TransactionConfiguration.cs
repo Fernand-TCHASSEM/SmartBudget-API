@@ -10,31 +10,48 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     public void Configure(EntityTypeBuilder<Transaction> builder)
     {
         builder.HasKey(t => t.Id);
-        builder.Property(t => t.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
+        builder.Property(t => t.Id)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength()
+            .ValueGeneratedNever();
 
-        builder.Property(t => t.UserId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(t => t.BankAccountId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(t => t.ImportBatchId).IsRequired(false).HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(t => t.CategoryId).IsRequired(false).HasMaxLength(36).HasColumnType("char(36)");
+        builder.Property(t => t.UserId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(t => t.BankAccountId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(t => t.ImportBatchId)
+            .IsRequired(false)
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(t => t.CategoryId)
+            .IsRequired(false)
+            .HasMaxLength(36)
+            .IsFixedLength();
 
         builder.Property(t => t.RawLabel).IsRequired().HasMaxLength(500);
         builder.Property(t => t.CleanLabel).IsRequired().HasMaxLength(255);
         builder.Property(t => t.Amount)
-            .IsRequired()
-            .HasColumnType("decimal(12,2)");
+            .HasColumnType("decimal(12,2)")
+            .IsRequired();
         builder.Property(t => t.Type)
+            .HasColumnType("enum('DEBIT','CREDIT')")
             .IsRequired()
-            .HasConversion<string>()
-            .HasColumnType("enum('DEBIT','CREDIT')");
+            .HasConversion<string>();
         builder.Property(t => t.IsCategoryManual).IsRequired().HasDefaultValue(false);
         builder.Property(t => t.Note)
             .IsRequired(false)
             .HasMaxLength(500);
         builder.Property(t => t.IsExcluded).IsRequired().HasDefaultValue(false);
         builder.Property(t => t.Hash)
+            .HasColumnType("char(64)")
             .IsRequired()
             .HasMaxLength(64)
-            .HasColumnType("char(64)");
+            .IsFixedLength();
         builder.Property(t => t.CreatedAt).IsRequired();
         builder.Property(t => t.UpdatedAt).IsRequired();
 

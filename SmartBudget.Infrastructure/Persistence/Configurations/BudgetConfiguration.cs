@@ -9,21 +9,31 @@ public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
     public void Configure(EntityTypeBuilder<Budget> builder)
     {
         builder.HasKey(b => b.Id);
-        builder.Property(b => b.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
+        builder.Property(b => b.Id)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength()
+            .ValueGeneratedNever();
 
-        builder.Property(b => b.UserId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(b => b.CategoryId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
+        builder.Property(b => b.UserId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(b => b.CategoryId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
 
         builder.Property(b => b.Year)
-            .IsRequired()
-            .HasColumnType("smallint");
+            .HasColumnType("smallint")
+            .IsRequired();
         builder.Property(b => b.Month)
+            .HasColumnType("tinyint unsigned")
             .IsRequired()
-            .HasDefaultValue((byte)1)
-            .HasColumnType("tinyint unsigned");
+            .HasDefaultValue((byte)1);
         builder.Property(t => t.LimitAmount)
-            .IsRequired()
-            .HasColumnType("decimal(12,2)");
+            .HasColumnType("decimal(12,2)")
+            .IsRequired();
         builder.Property(b => b.CreatedAt).IsRequired();
         builder.Property(b => b.UpdatedAt).IsRequired();
 

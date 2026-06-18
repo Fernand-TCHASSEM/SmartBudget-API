@@ -11,9 +11,15 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
         builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
+        builder.Property(r => r.Id)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
 
-        builder.Property(r => r.UserId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
+        builder.Property(r => r.UserId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
 
         builder.Property(r => r.Token).IsRequired().HasMaxLength(512);
         builder.Property(r => r.ExpiresAt).IsRequired();

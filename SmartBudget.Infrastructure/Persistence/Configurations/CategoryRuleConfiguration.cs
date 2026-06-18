@@ -9,10 +9,20 @@ public class CategoryRuleConfiguration : IEntityTypeConfiguration<CategoryRule>
     public void Configure(EntityTypeBuilder<CategoryRule> builder)
     {
         builder.HasKey(cr => cr.Id);
-        builder.Property(cr => cr.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
+        builder.Property(cr => cr.Id)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength()
+            .ValueGeneratedNever();
 
-        builder.Property(cr => cr.UserId).IsRequired(false).HasMaxLength(36).HasColumnType("char(36)");
-        builder.Property(cr => cr.CategoryId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
+        builder.Property(cr => cr.UserId)
+            .IsRequired(false)
+            .HasMaxLength(36)
+            .IsFixedLength();
+        builder.Property(cr => cr.CategoryId)
+            .IsRequired()
+            .HasMaxLength(36)
+            .IsFixedLength();
 
         builder.Property(cr => cr.Name).IsRequired(false).HasMaxLength(150);
         builder.Property(cr => cr.Keyword).IsRequired().HasMaxLength(255);
