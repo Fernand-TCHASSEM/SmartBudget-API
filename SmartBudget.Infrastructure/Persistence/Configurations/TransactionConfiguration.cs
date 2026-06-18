@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SmartBudget.Domain.Entities;
-using SmartBudget.Domain.Enums;
 
 namespace SmartBudget.Infrastructure.Persistence.Configurations;
 

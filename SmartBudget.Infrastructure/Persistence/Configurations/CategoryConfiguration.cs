@@ -35,7 +35,7 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(c => c.UserId);
-        builder.HasIndex(u => u.DeletedAt);
+        builder.HasIndex(c => c.DeletedAt);
 
         builder.ToTable("categories");
     }
