@@ -6,16 +6,20 @@ namespace SmartBudget.Infrastructure.Persistence.Configurations;
 
 public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
+    private static readonly int[] TokenIndexPrefixLength = [255];
+
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
         builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).IsRequired().HasMaxLength(36).ValueGeneratedNever();
+        builder.Property(r => r.Id).IsRequired().HasMaxLength(36).HasColumnType("char(36)").ValueGeneratedNever();
 
-        builder.Property(r => r.UserId).IsRequired().HasMaxLength(36);
+        builder.Property(r => r.UserId).IsRequired().HasMaxLength(36).HasColumnType("char(36)");
 
         builder.Property(r => r.Token).IsRequired().HasMaxLength(512);
         builder.Property(r => r.ExpiresAt).IsRequired();
-        builder.Property(r => r.IsRevoked).IsRequired();
+        builder.Property(u => u.IsRevoked)
+            .IsRequired()
+            .HasDefaultValue(false);
         builder.Property(r => r.CreatedAt).IsRequired();
 
         builder.HasOne(r => r.User)
@@ -24,9 +28,9 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(u => u.UserId);
-        // Added into InitialCreate
-        // builder.HasIndex(r => r.Token);
-        
+        builder.HasIndex(r => r.Token)
+            .HasDatabaseName("ix_refresh_tokens_token")
+            .HasAnnotation("MySql:IndexPrefixLength", TokenIndexPrefixLength);
 
         builder.ToTable("refresh_tokens");
     }

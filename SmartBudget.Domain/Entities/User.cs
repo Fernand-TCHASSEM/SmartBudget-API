@@ -32,4 +32,12 @@ public class User : ISoftDeletable, IHasTimestamps
     public ICollection<Category> Categories { get; set; } = [];
 
     public ICollection<CategoryRule> CategoryRules { get; set; } = [];
+
+    public ICollection<BankAccount> BankAccounts { get; set; } = [];
+
+    public ICollection<ImportBatch> ImportBatches { get; set; } = [];
+
+    public ICollection<Transaction> Transactions { get; set; } = [];
+
+    public ICollection<Budget> Budgets { get; set; } = [];
 }

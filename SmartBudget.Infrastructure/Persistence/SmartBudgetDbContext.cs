@@ -11,6 +11,10 @@ public class SmartBudgetDbContext(DbContextOptions<SmartBudgetDbContext> options
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<CategoryRule> CategoryRules => Set<CategoryRule>();
+    public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
+    public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<Budget> Budgets => Set<Budget>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
