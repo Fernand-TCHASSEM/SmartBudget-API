@@ -16,7 +16,7 @@ public class CategoryAuthorizationHandler
     {
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (requirement == CategoryOperations.View)
+        if (requirement == CategoryOperations.Show)
         {
             if (category.IsDefault || category.UserId == userId)
                 context.Succeed(requirement);

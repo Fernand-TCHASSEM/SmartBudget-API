@@ -1,14 +1,15 @@
 using SmartBudget.Domain.Entities;
+using SmartBudget.Domain.Enums;
 using SmartBudget.Domain.Primitives.Pagination;
 
 namespace SmartBudget.Domain.Interfaces.Repositories;
 
-public interface ICategoryRuleRepository : IRepository<CategoryRule>
+public interface IBankAccountRepository : IRepository<BankAccount>
 {
-    Task<PagedResponse<CategoryRule>> GetPagedForCategoryAsync(
+    Task<PagedResponse<BankAccount>> GetPagedForUserAsync(
         string userId,
-        string categoryId,
         PaginationFilter filter,
-        bool? isRegex = null,
+        AccountType? accountType = null,
+        Currency? currency = null,
         CancellationToken ct = default);
 }

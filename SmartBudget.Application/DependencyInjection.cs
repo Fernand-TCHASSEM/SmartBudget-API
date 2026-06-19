@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<UserService>();
         services.AddScoped<CategoryService>();
         services.AddScoped<CategoryRuleService>();
+        services.AddScoped<BankAccountService>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         return services;
     }

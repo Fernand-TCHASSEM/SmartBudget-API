@@ -29,4 +29,8 @@ public class Category : ISoftDeletable, IHasTimestamps
     public User? User { get; set; }
 
     public ICollection<CategoryRule> CategoryRules { get; set; } = [];
+
+    public ICollection<Transaction> Transactions { get; set; } = [];
+
+    public ICollection<Budget> Budgets { get; set; } = [];
 }

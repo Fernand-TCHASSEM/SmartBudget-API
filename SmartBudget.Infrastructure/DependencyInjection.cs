@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<ICategoryRuleRepository, CategoryRuleRepository>();
+        services.AddScoped<IBankAccountRepository, BankAccountRepository>();
         services.AddScoped<IDataSeeder, CategorySeeder>();
         services.AddScoped<IDataSeeder, CategoryRuleSeeder>();
         return services;
