@@ -12,6 +12,7 @@ public class CategoryRuleRepository(SmartBudgetDbContext db) : Repository<Catego
         string userId,
         string categoryId,
         PaginationFilter filter,
+        bool? isRegex = null,
         CancellationToken ct = default)
     {
         var query = Set.AsNoTracking()
@@ -19,11 +20,12 @@ public class CategoryRuleRepository(SmartBudgetDbContext db) : Repository<Catego
                 (cr.UserId == null || cr.UserId == userId));
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
-        {
             query = query.Where(c =>
                 (c.Name != null && c.Name.Contains(filter.Search)) ||
                 c.Keyword.Contains(filter.Search));
-        }
+
+        if (isRegex.HasValue)
+            query = query.Where(cr => cr.IsRegex == isRegex.Value);
 
         return await GetPagedAsync(query, filter, defaultSort: "CreatedAt desc", ct);
     }

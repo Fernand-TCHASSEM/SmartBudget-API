@@ -23,7 +23,7 @@ public class CategoryRuleController(
     [ProducesResponseType<PagedResponse<CategoryRuleResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Index(string categoryId, [FromQuery] PaginationFilter query, CancellationToken ct)
+    public async Task<IActionResult> Index(string categoryId, [FromQuery] CategoryRuleQuery query, CancellationToken ct)
     {
         var category = await categoryService.GetByIdAsync(categoryId, ct);
         if (category is null) return Problem("Category not found.", statusCode: 404);

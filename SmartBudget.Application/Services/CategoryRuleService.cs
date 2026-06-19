@@ -17,10 +17,10 @@ public class CategoryRuleService(
         return rule is null ? null : MapToResponse(rule);
     }
 
-    public async Task<PagedResponse<CategoryRuleResponse>> GetPagedAsync(string userId, string categoryId, PaginationFilter query, CancellationToken ct = default)
+    public async Task<PagedResponse<CategoryRuleResponse>> GetPagedAsync(string userId, string categoryId, CategoryRuleQuery query, CancellationToken ct = default)
     {
         var result = await categoryRuleRepository.GetPagedForCategoryAsync(
-            userId, categoryId, query, ct);
+            userId, categoryId, query, query.IsRegex, ct);
 
         return result.Map(MapToResponse);
     }

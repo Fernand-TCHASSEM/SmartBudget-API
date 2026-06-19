@@ -9,5 +9,6 @@ public interface ICategoryRuleRepository : IRepository<CategoryRule>
         string userId,
         string categoryId,
         PaginationFilter filter,
+        bool? isRegex = null,
         CancellationToken ct = default);
 }
