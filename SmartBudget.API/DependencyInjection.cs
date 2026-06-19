@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddSingleton<IAuthorizationHandler, UserAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, CategoryAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, CategoryRuleAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, BankAccountAuthorizationHandler>();
 
         return services;
     }

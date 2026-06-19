@@ -25,7 +25,7 @@ public class UserController(
         var userToShow = await userService.GetByIdAsync(id, ct);
         if (userToShow is null) return Problem("User not found.", statusCode: 404);
 
-        var auth = await authorizationService.AuthorizeAsync(User, userToShow, UserOperations.View);
+        var auth = await authorizationService.AuthorizeAsync(User, userToShow, UserOperations.Show);
         if (!auth.Succeeded) return Problem("You do not have permission to access this user.", statusCode: 403);
 
         return Ok(userToShow);

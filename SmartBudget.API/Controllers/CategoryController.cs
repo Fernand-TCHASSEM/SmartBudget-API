@@ -35,7 +35,7 @@ public class CategoryController(
         var category = await categoryService.GetByIdAsync(id, ct);
         if (category is null) return Problem("Category not found.", statusCode: 404);
 
-        var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.View);
+        var auth = await authorizationService.AuthorizeAsync(User, category, CategoryOperations.Show);
         if (!auth.Succeeded) return Problem("You do not have permission to access this category.", statusCode: 403);
 
         return Ok(category);

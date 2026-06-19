@@ -304,9 +304,11 @@ SmartBudget.Domain/
 │   ├── ImportBatch.cs
 │   └── Budget.cs
 ├── Enums/
+│   ├── AccountType.cs
 │   ├── Currency.cs
-│   ├── TransactionType.cs
-│   └── ImportStatus.cs
+│   ├── FileType.cs
+│   ├── ImportStatus.cs
+│   └── TransactionType.cs
 ├── Interfaces/
 │   ├── ISoftDeletable.cs
 │   ├── IHasTimestamps.cs
@@ -315,6 +317,7 @@ SmartBudget.Domain/
 │   │   ├── IRepository.cs
 │   │   ├── IUserRepository.cs
 │   │   ├── IRefreshTokenRepository.cs
+│   │   ├── IBankAccountRepository.cs
 │   │   ├── ITransactionRepository.cs
 │   │   ├── ICategoryRepository.cs
 │   │   ├── ICategoryRuleRepository.cs
@@ -328,6 +331,7 @@ SmartBudget.Application/
 ├── Services/
 │   ├── AuthService.cs
 │   ├── UserService.cs
+│   ├── BankAccountService.cs
 │   ├── CategoryService.cs
 │   ├── CategoryRuleService.cs
 │   ├── ImportCsvService.cs
@@ -345,6 +349,11 @@ SmartBudget.Application/
 │   ├── User/
 │   │   ├── UserResponse.cs
 │   │   └── UpdateUserRequest.cs
+│   ├── BankAccount/
+│   │   ├── BankAccountResponse.cs
+│   │   ├── BankAccountQuery.cs
+│   │   ├── CreateBankAccountRequest.cs
+│   │   └── UpdateBankAccountRequest.cs
 │   ├── Category/
 │   │   ├── CategoryResponse.cs
 │   │   ├── CreateCategoryRequest.cs
@@ -366,6 +375,9 @@ SmartBudget.Application/
 │   │   └── RevokeTokenDtoValidator.cs
 │   ├── User/
 │   │   └── UpdateUserDtoValidator.cs
+│   ├── BankAccount/
+│   │   ├── CreateBankAccountDtoValidator.cs
+│   │   └── UpdateBankAccountDtoValidator.cs
 │   ├── Category/
 │   │   ├── CreateCategoryDtoValidator.cs
 │   │   └── UpdateCategoryDtoValidator.cs
@@ -378,7 +390,12 @@ SmartBudget.Infrastructure/
 │   ├── Configurations/
 │   │   ├── UserConfiguration.cs
 │   │   ├── RefreshTokenConfiguration.cs
-│   │   └── CategoryConfiguration.cs
+│   │   ├── BankAccountConfiguration.cs
+│   │   ├── CategoryConfiguration.cs
+│   │   ├── CategoryRuleConfiguration.cs
+│   │   ├── ImportBatchConfiguration.cs
+│   │   ├── TransactionConfiguration.cs
+│   │   └── BudgetConfiguration.cs
 │   ├── SmartBudgetDbContext.cs
 │   ├── SoftDeleteInterceptor.cs
 │   ├── HasTimestampsInterceptor.cs
@@ -387,6 +404,7 @@ SmartBudget.Infrastructure/
 │   ├── Repository.cs
 │   ├── UserRepository.cs
 │   ├── RefreshTokenRepository.cs
+│   ├── BankAccountRepository.cs
 │   ├── TransactionRepository.cs
 │   ├── CategoryRepository.cs
 │   ├── CategoryRuleRepository.cs
@@ -406,15 +424,18 @@ SmartBudget.Infrastructure/
 SmartBudget.API/
 ├── Authorization/
 │   ├── Operation/
+│   │   ├── BankAccountOperations.cs
 │   │   ├── CategoryOperations.cs
 │   │   ├── CategoryRuleOperations.cs
 │   │   └── UserOperations.cs
+│   ├── BankAccountAuthorizationHandler.cs
 │   ├── CategoryAuthorizationHandler.cs
 │   ├── CategoryRuleAuthorizationHandler.cs
 │   └── UserAuthorizationHandler.cs
 ├── Controllers/
 │   ├── AuthController.cs
 │   ├── UserController.cs
+│   ├── BankAccountController.cs
 │   ├── CategoryController.cs
 │   ├── CategoryRuleController.cs
 │   ├── TransactionsController.cs
@@ -632,9 +653,11 @@ Protected resources (User, Category, CategoryRule) use ASP.NET Core's `IAuthoriz
 ```
 SmartBudget.API/Authorization/
 ├── Operation/
+│   ├── BankAccountOperations.cs    ← Show, Update, Delete
 │   ├── CategoryOperations.cs       ← View, Update, Delete
 │   ├── CategoryRuleOperations.cs   ← Delete
 │   └── UserOperations.cs           ← View, Update
+├── BankAccountAuthorizationHandler.cs
 ├── CategoryAuthorizationHandler.cs
 ├── CategoryRuleAuthorizationHandler.cs
 └── UserAuthorizationHandler.cs
@@ -759,6 +782,11 @@ http://localhost:8080/scalar
 | `POST` | `/api/auth/revoke` | Bearer | Revoke refresh token (logout) |
 | `GET` | `/api/users/{id}` | Bearer + owner | Get user profile |
 | `PUT` | `/api/users/{id}` | Bearer + owner | Update profile (name, currency, password) |
+| `GET` | `/api/bank-accounts` | Bearer | Paginated list (own) — `?page`, `pageSize`, `sortBy`, `search`, `accountType`, `currency` |
+| `GET` | `/api/bank-accounts/{id}` | Bearer + owner | Get bank account by ID |
+| `POST` | `/api/bank-accounts` | Bearer | Create bank account |
+| `PUT` | `/api/bank-accounts/{id}` | Bearer + owner | Update bank account |
+| `DELETE` | `/api/bank-accounts/{id}` | Bearer + owner | Soft-delete bank account |
 | `GET` | `/api/categories` | Bearer | Paginated list (own + system) — `?page`, `pageSize`, `sortBy`, `search`, `isIncome`, `isDefault` |
 | `GET` | `/api/categories/{id}` | Bearer + owner/default | Get category by ID |
 | `POST` | `/api/categories` | Bearer | Create user-defined category |
@@ -835,7 +863,8 @@ Coverage target: **>= 80%** on business services (`SmartBudget.Application`).
 - [x] User profile endpoints (GET, PUT) with ownership policies
 - [x] Redis rate limiting — sliding window middleware (global + per-auth-endpoint policies)
 - [x] Generic pagination — `PagedResponse<T>` + `PaginationFilter` in Domain, `QueryableExtensions` (sort + paginate on `IQueryable<T>`), opt-in per repository
-- [ ] Remaining domain entities + EF Core migrations (Transaction, Budget, BankAccount…)
+- [x] Remaining domain entities + EF Core configurations (BankAccount, Transaction, ImportBatch, Budget) + full initial migration
+- [x] Bank account endpoints (GET, POST, PUT, DELETE) with resource-based authorization and typed enum filters
 - [ ] End-to-end CSV import
 - [ ] Automatic categorization rule engine
 - [ ] AI-powered transaction categorization (Ollama + Gemini)
